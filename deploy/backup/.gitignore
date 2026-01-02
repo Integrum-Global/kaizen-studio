@@ -1,0 +1,21 @@
+# Backup files
+backups/
+*.dump
+*.dump.meta
+*.sql
+*.tar.gz
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+temp_*
+verify_*
+
+# Environment files
+.env.backup
+
+# AWS/GCS credentials
+.aws/
+.config/gcloud/

@@ -1,0 +1,57 @@
+# ==============================================
+# Kaizen Studio Web - Docker Compose
+# ==============================================
+# For local development with backend
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - VITE_API_URL=/api
+    depends_on:
+      - backend
+    networks:
+      - kaizen-network
+    restart: unless-stopped
+
+  backend:
+    image: kaizen-studio-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://kaizen_dev:kaizen_dev_password@db:5432/kaizen_studio
+      - ENVIRONMENT=development
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - kaizen-network
+    restart: unless-stopped
+
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=kaizen_dev
+      - POSTGRES_PASSWORD=kaizen_dev_password
+      - POSTGRES_DB=kaizen_studio
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kaizen_dev -d kaizen_studio"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kaizen-network
+    restart: unless-stopped
+
+networks:
+  kaizen-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

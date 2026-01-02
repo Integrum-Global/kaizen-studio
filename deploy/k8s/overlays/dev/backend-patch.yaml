@@ -1,0 +1,28 @@
+# Development Backend Patch
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: kaizen-studio-dev
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+      - name: backend
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: kaizen-studio-dev
+spec:
+  minReplicas: 1
+  maxReplicas: 3

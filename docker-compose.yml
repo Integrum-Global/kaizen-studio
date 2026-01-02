@@ -1,0 +1,135 @@
+# ==============================================
+# Kaizen Studio - Full Stack Docker Compose
+# ==============================================
+# Runs: PostgreSQL + Redis + Backend + Frontend
+#
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose up -d backend  # Start backend only (with deps)
+#   docker-compose logs -f        # Follow logs
+#   docker-compose down           # Stop all services
+#   docker-compose down -v        # Stop and remove volumes
+
+services:
+  # ==============================================
+  # PostgreSQL Database
+  # ==============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: kaizen_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kaizen_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kaizen_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-kaizen_studio}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kaizen_dev} -d ${POSTGRES_DB:-kaizen_studio}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kaizen_network
+    restart: unless-stopped
+
+  # ==============================================
+  # Redis Cache
+  # ==============================================
+  redis:
+    image: redis:7-alpine
+    container_name: kaizen_redis
+    command: redis-server --requirepass ${REDIS_PASSWORD:-kaizen_redis_password}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-kaizen_redis_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kaizen_network
+    restart: unless-stopped
+
+  # ==============================================
+  # FastAPI Backend
+  # ==============================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kaizen_backend
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-kaizen_dev}:${POSTGRES_PASSWORD:-kaizen_dev_password}@postgres:5432/${POSTGRES_DB:-kaizen_studio}
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-kaizen_redis_password}@redis:6379
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev_secret_key_for_local_development_only_change_in_production}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      - JWT_REFRESH_TOKEN_EXPIRE_DAYS=${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173,http://localhost:8000}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
+      # Azure AD Multi-Tenant SSO
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET:-}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID:-common}
+      # LLM API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+    networks:
+      - kaizen_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 10s
+      retries: 3
+
+  # ==============================================
+  # React Web App (Production Build with Nginx)
+  # ==============================================
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: kaizen_web
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - kaizen_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  kaizen_network:
+    driver: bridge

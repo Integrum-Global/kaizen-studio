@@ -1,0 +1,47 @@
+# ==============================================
+# Production Overlay
+# ==============================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kaizen-studio
+
+# Reference base configuration
+bases:
+- ../../base
+
+# Production-specific labels
+commonLabels:
+  environment: production
+
+# ConfigMap patches for production
+patchesStrategicMerge:
+- configmap-patch.yaml
+- backend-patch.yaml
+- postgresql-patch.yaml
+
+# Image tags for production (use specific versions)
+images:
+- name: kaizen-studio/backend
+  newTag: v1.0.0  # Always use versioned tags in production
+- name: kaizen-studio/web
+  newTag: v1.0.0
+
+# Resource adjustments for production (full scale)
+replicas:
+- name: backend
+  count: 3
+- name: web
+  count: 2
+
+# ConfigMap generator for production-specific config
+configMapGenerator:
+- name: kaizen-studio-config
+  behavior: merge
+  literals:
+  - ENVIRONMENT=production
+  - DEBUG=false
+  - LOG_LEVEL=info
+  - CORS_ORIGINS=https://studio.yourdomain.com
+  - FRONTEND_URL=https://studio.yourdomain.com
+  - JWT_ALGORITHM=RS256  # Use RS256 in production for better security

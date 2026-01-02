@@ -1,0 +1,24 @@
+# Load Test Reports
+reports/**/*.html
+reports/**/*.json
+reports/**/*.txt
+reports/**/*.xml
+reports/**/*.svg
+
+# k6 Output Files
+*.log
+results.json
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE Files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Keep reports directory structure
+!reports/.gitkeep

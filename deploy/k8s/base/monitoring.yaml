@@ -1,0 +1,199 @@
+# ==============================================
+# ServiceMonitor for Prometheus Operator
+# ==============================================
+# Requires Prometheus Operator to be installed
+#
+# Install with:
+#   helm install prometheus prometheus-community/kube-prometheus-stack
+#
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend-metrics
+  namespace: kaizen-studio
+  labels:
+    app.kubernetes.io/name: kaizen-studio
+    app.kubernetes.io/component: backend
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: backend
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+
+---
+# ==============================================
+# PrometheusRule for Alerting
+# ==============================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kaizen-studio-alerts
+  namespace: kaizen-studio
+  labels:
+    app.kubernetes.io/name: kaizen-studio
+    prometheus: kube-prometheus
+spec:
+  groups:
+  - name: kaizen-studio
+    interval: 30s
+    rules:
+    # Backend alerts
+    - alert: BackendHighErrorRate
+      expr: |
+        rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+        component: backend
+      annotations:
+        summary: "High error rate in backend"
+        description: "Backend error rate is {{ $value }}% over the last 5 minutes"
+
+    - alert: BackendHighLatency
+      expr: |
+        histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+      for: 5m
+      labels:
+        severity: warning
+        component: backend
+      annotations:
+        summary: "High latency in backend"
+        description: "95th percentile latency is {{ $value }}s"
+
+    - alert: BackendDown
+      expr: |
+        up{job="backend-service"} == 0
+      for: 2m
+      labels:
+        severity: critical
+        component: backend
+      annotations:
+        summary: "Backend is down"
+        description: "Backend has been down for more than 2 minutes"
+
+    # Database alerts
+    - alert: PostgresDown
+      expr: |
+        up{job="postgres-service"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: postgres
+      annotations:
+        summary: "PostgreSQL is down"
+        description: "PostgreSQL has been down for more than 1 minute"
+
+    - alert: PostgresHighConnections
+      expr: |
+        pg_stat_database_numbackends / pg_settings_max_connections > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        component: postgres
+      annotations:
+        summary: "PostgreSQL connection pool near limit"
+        description: "PostgreSQL is using {{ $value }}% of max connections"
+
+    # Redis alerts
+    - alert: RedisDown
+      expr: |
+        up{job="redis-service"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: redis
+      annotations:
+        summary: "Redis is down"
+        description: "Redis has been down for more than 1 minute"
+
+    - alert: RedisHighMemory
+      expr: |
+        redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+        component: redis
+      annotations:
+        summary: "Redis memory usage high"
+        description: "Redis is using {{ $value }}% of max memory"
+
+    # Pod alerts
+    - alert: PodCrashLooping
+      expr: |
+        rate(kube_pod_container_status_restarts_total{namespace="kaizen-studio"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod is crash looping"
+        description: "Pod {{ $labels.pod }} is restarting frequently"
+
+    - alert: PodNotReady
+      expr: |
+        kube_pod_status_ready{namespace="kaizen-studio", condition="false"} == 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod not ready"
+        description: "Pod {{ $labels.pod }} has been not ready for 5 minutes"
+
+---
+# ==============================================
+# Grafana Dashboard ConfigMap
+# ==============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-kaizen-studio
+  namespace: kaizen-studio
+  labels:
+    app.kubernetes.io/name: kaizen-studio
+    grafana_dashboard: "1"
+data:
+  kaizen-studio-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Kaizen Studio",
+        "tags": ["kaizen-studio"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Backend Request Rate",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{namespace=\"kaizen-studio\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Backend Error Rate",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{namespace=\"kaizen-studio\",status=~\"5..\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Database Connections",
+            "targets": [
+              {
+                "expr": "pg_stat_database_numbackends{namespace=\"kaizen-studio\"}"
+              }
+            ]
+          },
+          {
+            "title": "Redis Memory Usage",
+            "targets": [
+              {
+                "expr": "redis_memory_used_bytes{namespace=\"kaizen-studio\"}"
+              }
+            ]
+          }
+        ]
+      }
+    }

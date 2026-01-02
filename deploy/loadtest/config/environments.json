@@ -1,0 +1,49 @@
+{
+  "environments": {
+    "local": {
+      "name": "Local Development",
+      "baseUrl": "http://localhost:8000",
+      "apiPrefix": "/api/v1",
+      "timeout": 30000,
+      "description": "Local development environment"
+    },
+    "dev": {
+      "name": "Development",
+      "baseUrl": "https://dev.kaizen-studio.example.com",
+      "apiPrefix": "/api/v1",
+      "timeout": 30000,
+      "description": "Shared development environment"
+    },
+    "staging": {
+      "name": "Staging",
+      "baseUrl": "https://staging.kaizen-studio.example.com",
+      "apiPrefix": "/api/v1",
+      "timeout": 30000,
+      "description": "Pre-production staging environment"
+    },
+    "production": {
+      "name": "Production",
+      "baseUrl": "https://kaizen-studio.example.com",
+      "apiPrefix": "/api/v1",
+      "timeout": 30000,
+      "description": "Production environment - use with caution"
+    }
+  },
+  "defaults": {
+    "environment": "local",
+    "httpDebug": false,
+    "insecureSkipTLSVerify": false
+  },
+  "testUsers": {
+    "admin": {
+      "email": "admin@example.com",
+      "password": "${LOAD_TEST_ADMIN_PASSWORD}",
+      "description": "Admin user for load testing"
+    },
+    "developer": {
+      "email": "developer@example.com",
+      "password": "${LOAD_TEST_DEV_PASSWORD}",
+      "description": "Developer user for load testing"
+    }
+  }
+}

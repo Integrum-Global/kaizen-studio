@@ -1,0 +1,155 @@
+{
+  "description": "Performance SLOs (Service Level Objectives) for Kaizen Studio",
+  "version": "1.0.0",
+  "last_updated": "2024-12-16",
+  "environments": {
+    "development": {
+      "http_req_duration": {
+        "p95": 500,
+        "p99": 1000,
+        "description": "95% of requests complete within 500ms, 99% within 1s"
+      },
+      "http_req_failed": {
+        "rate": 0.05,
+        "description": "Error rate below 5%"
+      },
+      "success_rate": {
+        "rate": 0.95,
+        "description": "Success rate above 95%"
+      },
+      "availability": {
+        "rate": 0.99,
+        "description": "Availability above 99%"
+      }
+    },
+    "staging": {
+      "http_req_duration": {
+        "p95": 300,
+        "p99": 700,
+        "description": "95% of requests complete within 300ms, 99% within 700ms"
+      },
+      "http_req_failed": {
+        "rate": 0.02,
+        "description": "Error rate below 2%"
+      },
+      "success_rate": {
+        "rate": 0.98,
+        "description": "Success rate above 98%"
+      },
+      "availability": {
+        "rate": 0.995,
+        "description": "Availability above 99.5%"
+      }
+    },
+    "production": {
+      "http_req_duration": {
+        "p95": 200,
+        "p99": 500,
+        "description": "95% of requests complete within 200ms, 99% within 500ms"
+      },
+      "http_req_failed": {
+        "rate": 0.01,
+        "description": "Error rate below 1%"
+      },
+      "success_rate": {
+        "rate": 0.99,
+        "description": "Success rate above 99%"
+      },
+      "availability": {
+        "rate": 0.999,
+        "description": "Availability above 99.9%"
+      }
+    }
+  },
+  "custom_metrics": {
+    "login_duration": {
+      "p95": 250,
+      "p99": 500,
+      "description": "Authentication latency"
+    },
+    "logout_duration": {
+      "p95": 150,
+      "p99": 300,
+      "description": "Logout latency"
+    },
+    "agent_crud_duration": {
+      "p95": 400,
+      "p99": 800,
+      "description": "Agent CRUD operations latency"
+    },
+    "pipeline_crud_duration": {
+      "p95": 400,
+      "p99": 800,
+      "description": "Pipeline CRUD operations latency"
+    },
+    "deployment_duration": {
+      "p95": 1000,
+      "p99": 2000,
+      "description": "Deployment operations latency (can be slower)"
+    }
+  },
+  "test_specific": {
+    "smoke": {
+      "description": "Smoke test validates minimal load",
+      "vus": 5,
+      "duration": "30s",
+      "http_req_duration_p95": 500,
+      "http_req_failed_rate": 0.05
+    },
+    "average": {
+      "description": "Average load test",
+      "vus": 50,
+      "duration": "5m",
+      "http_req_duration_p95": 300,
+      "http_req_failed_rate": 0.02
+    },
+    "stress": {
+      "description": "Stress test finds breaking point",
+      "max_vus": 500,
+      "duration": "20m",
+      "http_req_duration_p95": 1000,
+      "http_req_failed_rate": 0.1
+    },
+    "spike": {
+      "description": "Spike test validates burst handling",
+      "max_vus": 1000,
+      "spike_duration": "2m",
+      "http_req_duration_p95": 2000,
+      "http_req_failed_rate": 0.15
+    },
+    "soak": {
+      "description": "Soak test detects memory leaks",
+      "vus": 100,
+      "duration": "30m",
+      "http_req_duration_p95": 300,
+      "http_req_failed_rate": 0.02
+    }
+  },
+  "baseline_performance": {
+    "description": "Baseline metrics from initial testing (update after each release)",
+    "version": "1.0.0",
+    "date": "2024-12-16",
+    "metrics": {
+      "auth_login_p95": "TBD - Run baseline tests",
+      "auth_logout_p95": "TBD - Run baseline tests",
+      "agent_list_p95": "TBD - Run baseline tests",
+      "agent_create_p95": "TBD - Run baseline tests",
+      "pipeline_list_p95": "TBD - Run baseline tests",
+      "pipeline_create_p95": "TBD - Run baseline tests",
+      "metrics_query_p95": "TBD - Run baseline tests"
+    }
+  },
+  "degradation_alerts": {
+    "description": "Alert thresholds for performance degradation",
+    "p95_degradation": {
+      "warning": 1.2,
+      "critical": 1.5,
+      "description": "Alert if p95 increases by 20% (warning) or 50% (critical)"
+    },
+    "error_rate_increase": {
+      "warning": 2,
+      "critical": 5,
+      "description": "Alert if error rate doubles (warning) or 5x (critical)"
+    }
+  }
+}

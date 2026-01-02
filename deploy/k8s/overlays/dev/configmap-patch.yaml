@@ -1,0 +1,12 @@
+# Development ConfigMap Patch
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaizen-studio-config
+  namespace: kaizen-studio-dev
+data:
+  ENVIRONMENT: "development"
+  DEBUG: "true"
+  LOG_LEVEL: "debug"
+  CORS_ORIGINS: "http://localhost:3000,http://localhost:5173,https://dev.yourdomain.com"
+  FRONTEND_URL: "https://dev.yourdomain.com"

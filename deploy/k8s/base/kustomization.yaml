@@ -1,0 +1,45 @@
+# ==============================================
+# Kustomize Base Configuration
+# ==============================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kaizen-studio
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: kaizen-studio
+  app.kubernetes.io/managed-by: kustomize
+
+resources:
+- namespace.yaml
+- configmap.yaml
+- secrets.yaml
+- postgresql.yaml
+- redis.yaml
+- backend.yaml
+- web.yaml
+- ingress.yaml
+- resource-quota.yaml
+- network-policy.yaml
+- monitoring.yaml
+
+# Image tags (override in overlays)
+images:
+- name: kaizen-studio/backend
+  newTag: latest
+- name: kaizen-studio/web
+  newTag: latest
+
+# ConfigMap generator (alternative to configmap.yaml)
+# configMapGenerator:
+# - name: kaizen-studio-config
+#   literals:
+#   - ENVIRONMENT=production
+#   - DEBUG=false
+
+# Secret generator (DO NOT USE IN PRODUCTION - use external secrets)
+# secretGenerator:
+# - name: kaizen-studio-secrets
+#   literals:
+#   - postgres-password=changeme

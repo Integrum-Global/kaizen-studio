@@ -1,0 +1,18 @@
+export type {
+  GatewayEnvironment,
+  GatewayStatus,
+  PromotionStatus,
+  ScalingMode,
+  Gateway,
+  GatewayHealth,
+  PromotionRequest,
+  ScalingPolicy,
+  ScalingEvent,
+  GatewayFilter,
+  GatewayResponse,
+  PromotionHistoryResponse,
+  ScalingEventResponse,
+  CreatePromotionRequest,
+  CreateScalingPolicyRequest,
+  ManualScaleRequest,
+} from "./gateway";

@@ -1,0 +1,226 @@
+# ==============================================
+# PostgreSQL StatefulSet
+# ==============================================
+# Persistent database with ordered deployment
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: kaizen-studio
+  labels:
+    app.kubernetes.io/name: kaizen-studio
+    app.kubernetes.io/component: postgres
+    app.kubernetes.io/version: "15"
+spec:
+  serviceName: postgres-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kaizen-studio
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: kaizen-studio
+        app.kubernetes.io/component: postgres
+        app.kubernetes.io/version: "15"
+    spec:
+      # Security Context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999  # postgres user
+        fsGroup: 999
+
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: postgres
+          containerPort: 5432
+          protocol: TCP
+
+        # Environment Variables
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: kaizen-studio-secrets
+              key: postgres-db
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: kaizen-studio-secrets
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: kaizen-studio-secrets
+              key: postgres-password
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: "scram-sha-256"
+        - name: PGDATA
+          value: "/var/lib/postgresql/data/pgdata"
+
+        # Volume Mounts
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+
+        # Resource Limits
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+
+        # Liveness Probe
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Readiness Probe
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pg_isready -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Security Context
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 999
+          capabilities:
+            drop:
+            - ALL
+
+  # Volume Claim Templates
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+      labels:
+        app.kubernetes.io/name: kaizen-studio
+        app.kubernetes.io/component: postgres
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 50Gi
+      # storageClassName: fast-ssd  # Uncomment and adjust for your cluster
+
+---
+# ==============================================
+# PostgreSQL Headless Service
+# ==============================================
+# Required for StatefulSet DNS resolution
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-headless
+  namespace: kaizen-studio
+  labels:
+    app.kubernetes.io/name: kaizen-studio
+    app.kubernetes.io/component: postgres
+spec:
+  clusterIP: None  # Headless service
+  selector:
+    app.kubernetes.io/name: kaizen-studio
+    app.kubernetes.io/component: postgres
+  ports:
+  - name: postgres
+    protocol: TCP
+    port: 5432
+    targetPort: postgres
+
+---
+# ==============================================
+# PostgreSQL Service (ClusterIP)
+# ==============================================
+# Standard service for backend connections
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: kaizen-studio
+  labels:
+    app.kubernetes.io/name: kaizen-studio
+    app.kubernetes.io/component: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: kaizen-studio
+    app.kubernetes.io/component: postgres
+  ports:
+  - name: postgres
+    protocol: TCP
+    port: 5432
+    targetPort: postgres
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800  # 3 hours
+
+---
+# ==============================================
+# PostgreSQL ConfigMap
+# ==============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: kaizen-studio
+  labels:
+    app.kubernetes.io/name: kaizen-studio
+    app.kubernetes.io/component: postgres
+data:
+  # PostgreSQL configuration tuning
+  postgresql.conf: |
+    # Connection settings
+    max_connections = 100
+    superuser_reserved_connections = 3
+
+    # Memory settings (adjust based on pod resources)
+    shared_buffers = 512MB
+    effective_cache_size = 1536MB
+    work_mem = 16MB
+    maintenance_work_mem = 128MB
+
+    # Checkpoint settings
+    checkpoint_completion_target = 0.9
+    wal_buffers = 16MB
+
+    # Query planner
+    random_page_cost = 1.1  # For SSD storage
+    effective_io_concurrency = 200
+
+    # Write-ahead log
+    wal_level = replica
+    max_wal_size = 1GB
+    min_wal_size = 80MB
+
+    # Logging
+    log_destination = 'stderr'
+    logging_collector = on
+    log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '
+    log_statement = 'none'
+    log_duration = off
+    log_min_duration_statement = 1000  # Log slow queries (1 second)

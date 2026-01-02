@@ -1,0 +1,48 @@
+# ==============================================
+# Development Overlay
+# ==============================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kaizen-studio-dev
+
+# Reference base configuration
+bases:
+- ../../base
+
+# Development-specific labels
+commonLabels:
+  environment: development
+
+# Namespace override
+nameSuffix: -dev
+
+# ConfigMap patches for development
+patchesStrategicMerge:
+- configmap-patch.yaml
+- backend-patch.yaml
+
+# Image tags for development
+images:
+- name: kaizen-studio/backend
+  newTag: dev
+- name: kaizen-studio/web
+  newTag: dev
+
+# Resource adjustments for development (lower limits)
+replicas:
+- name: backend
+  count: 1
+- name: web
+  count: 1
+
+# ConfigMap generator for dev-specific config
+configMapGenerator:
+- name: kaizen-studio-config
+  behavior: merge
+  literals:
+  - ENVIRONMENT=development
+  - DEBUG=true
+  - LOG_LEVEL=debug
+  - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://dev.yourdomain.com
+  - FRONTEND_URL=https://dev.yourdomain.com

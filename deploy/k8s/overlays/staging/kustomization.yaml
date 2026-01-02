@@ -1,0 +1,48 @@
+# ==============================================
+# Staging Overlay
+# ==============================================
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: kaizen-studio-staging
+
+# Reference base configuration
+bases:
+- ../../base
+
+# Staging-specific labels
+commonLabels:
+  environment: staging
+
+# Namespace override
+nameSuffix: -staging
+
+# ConfigMap patches for staging
+patchesStrategicMerge:
+- configmap-patch.yaml
+- backend-patch.yaml
+
+# Image tags for staging
+images:
+- name: kaizen-studio/backend
+  newTag: staging
+- name: kaizen-studio/web
+  newTag: staging
+
+# Resource adjustments for staging (medium scale)
+replicas:
+- name: backend
+  count: 2
+- name: web
+  count: 2
+
+# ConfigMap generator for staging-specific config
+configMapGenerator:
+- name: kaizen-studio-config
+  behavior: merge
+  literals:
+  - ENVIRONMENT=staging
+  - DEBUG=false
+  - LOG_LEVEL=info
+  - CORS_ORIGINS=https://staging.yourdomain.com
+  - FRONTEND_URL=https://staging.yourdomain.com

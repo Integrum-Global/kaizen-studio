@@ -1,0 +1,246 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backup-scripts
+  namespace: kaizen-studio
+data:
+  backup.sh: |
+    #!/bin/bash
+    set -euo pipefail
+
+    # Configuration from environment
+    BACKUP_DIR="/backups"
+    BACKUP_NAME="backup_$(date +%Y%m%d_%H%M%S)"
+    BACKUP_FILE="$BACKUP_DIR/${BACKUP_NAME}.dump"
+    BACKUP_LOG="$BACKUP_DIR/backup.log"
+
+    # Logging
+    log() {
+        local level="$1"
+        shift
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] [$level] $*" | tee -a "$BACKUP_LOG"
+    }
+
+    log "INFO" "Starting backup: $BACKUP_NAME"
+    log "INFO" "Database: $POSTGRES_DB@$POSTGRES_HOST:$POSTGRES_PORT"
+
+    # Create backup
+    PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
+        -h "$POSTGRES_HOST" \
+        -p "$POSTGRES_PORT" \
+        -U "$POSTGRES_USER" \
+        -d "$POSTGRES_DB" \
+        -Fc \
+        -v \
+        -Z 6 \
+        --no-owner \
+        --no-acl \
+        -f "$BACKUP_FILE" 2>&1 | tee -a "$BACKUP_LOG"
+
+    EXIT_CODE=${PIPESTATUS[0]}
+
+    if [[ $EXIT_CODE -ne 0 ]]; then
+        log "ERROR" "Backup failed with exit code: $EXIT_CODE"
+        exit 1
+    fi
+
+    # Create metadata
+    cat > "$BACKUP_FILE.meta" <<EOF
+    {
+        "backup_name": "$BACKUP_NAME",
+        "database": "$POSTGRES_DB",
+        "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+        "size_bytes": $(stat -c%s "$BACKUP_FILE")
+    }
+    EOF
+
+    # Rotate old backups (keep last N)
+    RETENTION_COUNT="${BACKUP_RETENTION_COUNT:-10}"
+    BACKUP_COUNT=$(find "$BACKUP_DIR" -name "*.dump" -type f | wc -l)
+
+    if [[ $BACKUP_COUNT -gt $RETENTION_COUNT ]]; then
+        TO_DELETE=$((BACKUP_COUNT - RETENTION_COUNT))
+        log "INFO" "Rotating backups: deleting $TO_DELETE old backup(s)"
+        find "$BACKUP_DIR" -name "*.dump" -type f -printf '%T+ %p\n' | \
+            sort | \
+            head -n $TO_DELETE | \
+            cut -d' ' -f2- | \
+            xargs -r rm -f
+    fi
+
+    BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
+    log "SUCCESS" "Backup completed: $BACKUP_FILE ($BACKUP_SIZE)"
+
+    # Optional: Upload to S3 if credentials provided
+    if [[ -n "${AWS_ACCESS_KEY_ID:-}" ]] && [[ -n "${S3_BACKUP_BUCKET:-}" ]]; then
+        log "INFO" "Uploading to S3: s3://$S3_BACKUP_BUCKET/backups/$BACKUP_NAME.dump"
+        aws s3 cp "$BACKUP_FILE" "s3://$S3_BACKUP_BUCKET/backups/$BACKUP_NAME.dump"
+        aws s3 cp "$BACKUP_FILE.meta" "s3://$S3_BACKUP_BUCKET/backups/$BACKUP_NAME.dump.meta"
+        log "SUCCESS" "Uploaded to S3"
+    fi
+
+    exit 0
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup
+  namespace: kaizen-studio
+  labels:
+    app: kaizen-studio
+    component: backup
+spec:
+  # Schedule: Daily at 2:00 AM UTC
+  schedule: "0 2 * * *"
+
+  # Timezone (requires Kubernetes 1.25+)
+  # timeZone: "UTC"
+
+  # Keep last 3 completed jobs
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+
+  # Concurrency policy: Don't run if previous job is still running
+  concurrencyPolicy: Forbid
+
+  # Start deadline: 1 hour
+  startingDeadlineSeconds: 3600
+
+  jobTemplate:
+    metadata:
+      labels:
+        app: kaizen-studio
+        component: backup
+    spec:
+      # Retry policy
+      backoffLimit: 2
+
+      # Active deadline: 2 hours
+      activeDeadlineSeconds: 7200
+
+      template:
+        metadata:
+          labels:
+            app: kaizen-studio
+            component: backup
+        spec:
+          restartPolicy: OnFailure
+
+          # Service account for S3 access (if using AWS)
+          # serviceAccountName: backup-service-account
+
+          containers:
+          - name: postgres-backup
+            image: postgres:15-alpine
+            imagePullPolicy: IfNotPresent
+
+            command:
+            - /bin/sh
+            - -c
+            - |
+              # Install AWS CLI if S3 backup is enabled
+              if [ -n "$AWS_ACCESS_KEY_ID" ]; then
+                apk add --no-cache aws-cli
+              fi
+
+              # Make script executable and run
+              chmod +x /scripts/backup.sh
+              /scripts/backup.sh
+
+            env:
+            # PostgreSQL connection
+            - name: POSTGRES_HOST
+              value: "postgres-service"  # Update with your PostgreSQL service name
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: kaizen-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: kaizen-secrets
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: kaizen-secrets
+                  key: postgres-password
+
+            # Backup configuration
+            - name: BACKUP_RETENTION_COUNT
+              value: "10"  # Keep last 10 backups
+
+            # Optional: S3 configuration
+            # - name: S3_BACKUP_BUCKET
+            #   value: "kaizen-studio-backups"
+            # - name: AWS_ACCESS_KEY_ID
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: aws-credentials
+            #       key: access-key-id
+            # - name: AWS_SECRET_ACCESS_KEY
+            #   valueFrom:
+            #     secretKeyRef:
+            #       name: aws-credentials
+            #       key: secret-access-key
+            # - name: AWS_DEFAULT_REGION
+            #   value: "us-east-1"
+
+            volumeMounts:
+            - name: backup-scripts
+              mountPath: /scripts
+              readOnly: true
+            - name: backup-storage
+              mountPath: /backups
+
+            resources:
+              requests:
+                cpu: 500m
+                memory: 512Mi
+              limits:
+                cpu: 2000m
+                memory: 2Gi
+
+            # Security context
+            securityContext:
+              runAsNonRoot: true
+              runAsUser: 999  # postgres user
+              allowPrivilegeEscalation: false
+              capabilities:
+                drop:
+                - ALL
+
+          volumes:
+          - name: backup-scripts
+            configMap:
+              name: backup-scripts
+              defaultMode: 0755
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: backup-pvc
+
+---
+# Optional: Service account for AWS S3 access (using IRSA)
+# apiVersion: v1
+# kind: ServiceAccount
+# metadata:
+#   name: backup-service-account
+#   namespace: kaizen-studio
+#   annotations:
+#     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/kaizen-studio-backup-role
+
+---
+# Optional: Secret for AWS credentials (if not using IRSA)
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: aws-credentials
+#   namespace: kaizen-studio
+# type: Opaque
+# data:
+#   access-key-id: <base64-encoded-access-key>
+#   secret-access-key: <base64-encoded-secret-key>

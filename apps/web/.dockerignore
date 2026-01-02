@@ -1,0 +1,53 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build output
+dist
+build
+
+# Testing
+coverage
+.nyc_output
+e2e-report
+playwright-report
+test-results
+
+# Environment files (except templates)
+.env
+.env.local
+.env.development
+.env.*.local
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Git
+.git
+.gitignore
+
+# Documentation
+docs
+*.md
+!README.md
+
+# Config files not needed in production
+.eslintrc*
+.prettierrc*
+vitest.config.*
+playwright.config.*
+
+# Development files
+scripts

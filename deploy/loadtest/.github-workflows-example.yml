@@ -1,0 +1,288 @@
+# Example GitHub Actions Workflow for Load Testing
+#
+# Copy this file to .github/workflows/loadtest.yml to enable automated load testing
+#
+# Features:
+# - Smoke test on every PR
+# - Full suite on merge to main
+# - Nightly stress/spike tests
+# - Report artifacts and Slack notifications
+
+name: Load Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+  schedule:
+    # Run nightly at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Test type to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - auth
+          - agents
+          - pipelines
+          - stress
+          - spike
+          - soak
+          - all
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - development
+          - staging
+
+env:
+  K6_VERSION: 0.47.0
+
+jobs:
+  # Smoke test on every PR
+  smoke-test:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | \
+            sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run smoke test
+        run: |
+          cd deploy/loadtest
+          ./run-loadtest.sh smoke staging --html
+        env:
+          BASE_URL: ${{ secrets.STAGING_URL }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: smoke-test-report
+          path: deploy/loadtest/reports/
+          retention-days: 30
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const fs = require('fs');
+            const summaryPath = 'deploy/loadtest/reports/';
+            const files = fs.readdirSync(summaryPath);
+            const summaryFile = files.find(f => f.endsWith('_summary.json'));
+
+            if (summaryFile) {
+              const summary = JSON.parse(fs.readFileSync(`${summaryPath}${summaryFile}`, 'utf8'));
+              const metrics = summary.metrics;
+
+              const comment = `## 🔬 Load Test Results (Smoke Test)
+
+              | Metric | Value | Status |
+              |--------|-------|--------|
+              | HTTP Request Duration (p95) | ${metrics.http_req_duration['p(95)'].toFixed(2)}ms | ${metrics.http_req_duration['p(95)'] < 500 ? '✅' : '❌'} |
+              | HTTP Request Duration (p99) | ${metrics.http_req_duration['p(99)'].toFixed(2)}ms | ${metrics.http_req_duration['p(99)'] < 1000 ? '✅' : '❌'} |
+              | Error Rate | ${(metrics.http_req_failed.rate * 100).toFixed(2)}% | ${metrics.http_req_failed.rate < 0.05 ? '✅' : '❌'} |
+              | Success Rate | ${(metrics.success_rate.rate * 100).toFixed(2)}% | ${metrics.success_rate.rate > 0.95 ? '✅' : '❌'} |
+              | Total Requests | ${metrics.http_reqs.count} | - |
+              | Request Rate | ${metrics.http_reqs.rate.toFixed(2)} req/s | - |
+
+              <details>
+              <summary>View Full Report</summary>
+
+              Download the artifact above for detailed HTML report.
+              </details>
+              `;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }
+
+  # Full test suite on merge to main
+  full-suite:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        test: [smoke, auth, agents, pipelines]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | \
+            sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run ${{ matrix.test }} test
+        run: |
+          cd deploy/loadtest
+          ./run-loadtest.sh ${{ matrix.test }} staging --html
+        env:
+          BASE_URL: ${{ secrets.STAGING_URL }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: ${{ matrix.test }}-test-report
+          path: deploy/loadtest/reports/
+          retention-days: 30
+
+      - name: Notify on failure
+        if: failure()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "❌ Load test failed: ${{ matrix.test }} on staging",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Load Test Failed*\n*Test*: ${{ matrix.test }}\n*Environment*: staging\n*Commit*: ${{ github.sha }}\n*Author*: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Nightly stress and spike tests
+  nightly-tests:
+    name: Nightly Stress Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    strategy:
+      matrix:
+        test: [stress, spike]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | \
+            sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run ${{ matrix.test }} test
+        run: |
+          cd deploy/loadtest
+          ./run-loadtest.sh ${{ matrix.test }} staging --html
+        env:
+          BASE_URL: ${{ secrets.STAGING_URL }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: nightly-${{ matrix.test }}-report
+          path: deploy/loadtest/reports/
+          retention-days: 90
+
+      - name: Parse results and notify
+        if: always()
+        run: |
+          cd deploy/loadtest/reports
+          latest_summary=$(ls -t *_summary.json | head -1)
+
+          if [ -f "$latest_summary" ]; then
+            p95=$(jq -r '.metrics.http_req_duration["p(95)"]' "$latest_summary")
+            error_rate=$(jq -r '.metrics.http_req_failed.rate' "$latest_summary")
+
+            echo "p95_latency=$p95" >> $GITHUB_ENV
+            echo "error_rate=$error_rate" >> $GITHUB_ENV
+          fi
+
+      - name: Notify results
+        uses: slackapi/slack-github-action@v1
+        if: always()
+        with:
+          payload: |
+            {
+              "text": "${{ job.status == 'success' && '✅' || '❌' }} Nightly ${{ matrix.test }} test completed",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Nightly Load Test Results*\n*Test*: ${{ matrix.test }}\n*Status*: ${{ job.status }}\n*p95 Latency*: ${{ env.p95_latency }}ms\n*Error Rate*: ${{ env.error_rate }}%"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # Manual workflow dispatch
+  manual-test:
+    name: Manual Test Run
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | \
+            sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run ${{ github.event.inputs.test_type }} test
+        run: |
+          cd deploy/loadtest
+          ./run-loadtest.sh ${{ github.event.inputs.test_type }} ${{ github.event.inputs.environment }} --html
+        env:
+          BASE_URL: ${{ secrets[format('{0}_URL', github.event.inputs.environment)] }}
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: manual-${{ github.event.inputs.test_type }}-report
+          path: deploy/loadtest/reports/
+          retention-days: 30

@@ -1,0 +1,39 @@
+# ==============================================
+# Kaizen Studio ConfigMap
+# ==============================================
+# Non-sensitive configuration shared across pods
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaizen-studio-config
+  namespace: kaizen-studio
+  labels:
+    app.kubernetes.io/name: kaizen-studio
+    app.kubernetes.io/component: config
+data:
+  # Application Configuration
+  ENVIRONMENT: "production"
+  DEBUG: "false"
+  LOG_LEVEL: "info"
+
+  # JWT Configuration
+  JWT_ALGORITHM: "HS256"
+  JWT_ACCESS_TOKEN_EXPIRE_MINUTES: "15"
+  JWT_REFRESH_TOKEN_EXPIRE_DAYS: "7"
+
+  # Database Configuration
+  POSTGRES_DB: "kaizen_studio"
+  POSTGRES_PORT: "5432"
+
+  # Redis Configuration
+  REDIS_PORT: "6379"
+
+  # Backend Configuration
+  BACKEND_PORT: "8000"
+
+  # CORS Configuration (override in overlays for different environments)
+  CORS_ORIGINS: "https://studio.yourdomain.com"
+  FRONTEND_URL: "https://studio.yourdomain.com"
+
+  # Azure AD Multi-Tenant SSO
+  AZURE_TENANT_ID: "common"

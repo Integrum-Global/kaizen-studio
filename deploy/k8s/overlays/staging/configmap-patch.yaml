@@ -1,0 +1,12 @@
+# Staging ConfigMap Patch
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kaizen-studio-config
+  namespace: kaizen-studio-staging
+data:
+  ENVIRONMENT: "staging"
+  DEBUG: "false"
+  LOG_LEVEL: "info"
+  CORS_ORIGINS: "https://staging.yourdomain.com"
+  FRONTEND_URL: "https://staging.yourdomain.com"

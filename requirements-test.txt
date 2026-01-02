@@ -1,0 +1,20 @@
+# Test dependencies for Kaizen Studio
+
+# Core testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-timeout>=2.1.0
+pytest-cov>=4.1.0
+
+# Async HTTP client for API testing
+httpx>=0.24.0
+
+# Time mocking (Tier 1 only)
+freezegun>=1.2.0
+
+# Redis client
+redis>=4.5.0
+
+# Test utilities
+factory-boy>=3.3.0
+faker>=19.0.0
