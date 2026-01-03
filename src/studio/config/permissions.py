@@ -6,6 +6,32 @@ Defines the default permission matrix for RBAC roles.
 
 # Default permission matrix for each role
 PERMISSION_MATRIX = {
+    # tenant_admin: First user from SSO domain, equivalent to org_owner
+    "tenant_admin": [
+        "organizations:*",
+        "users:*",
+        "teams:*",
+        "workspaces:*",
+        "agents:*",
+        "external_agents:*",
+        "deployments:*",
+        "billing:*",
+        "policies:*",
+        "connectors:*",
+        "promotions:*",
+        "pipelines:*",
+        "panels:*",
+        "metrics:*",
+        "gateways:*",
+        "api_keys:*",
+        "webhooks:*",
+        "scaling:*",
+        "invitations:*",
+        "sso:*",
+        "audit:read",
+        "lineage:*",
+        "gdpr:*",
+    ],
     "org_owner": [
         "organizations:*",
         "users:*",
@@ -225,13 +251,13 @@ PERMISSION_DESCRIPTIONS = {
 }
 
 # Valid roles
-VALID_ROLES = ["org_owner", "org_admin", "developer", "viewer"]
+VALID_ROLES = ["tenant_admin", "org_owner", "org_admin", "developer", "viewer"]
 
 # Admin roles that can manage users, teams, and settings
-ADMIN_ROLES = ["org_owner", "org_admin"]
+ADMIN_ROLES = ["tenant_admin", "org_owner", "org_admin"]
 
 # Roles that can create resources (agents, deployments, etc.)
-CREATOR_ROLES = ["org_owner", "org_admin", "developer"]
+CREATOR_ROLES = ["tenant_admin", "org_owner", "org_admin", "developer"]
 
 # Valid actions
 VALID_ACTIONS = ["create", "read", "update", "delete", "deploy", "*"]

@@ -70,7 +70,11 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     logger.info(f"Starting {settings.app_name} v{settings.version}")
     logger.info(f"Environment: {settings.environment}")
-    logger.info("DataFlow initialized with database")
+
+    # DataFlow tables are created by scripts/entrypoint.sh BEFORE uvicorn starts.
+    # This avoids async event loop conflicts that occur with DataFlow's migration system.
+    # See: docs/22-deployment/02-troubleshooting.md for details.
+    logger.info("DataFlow tables should be ready (created by entrypoint script)")
 
     yield
 

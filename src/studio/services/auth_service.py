@@ -510,17 +510,30 @@ class AuthService:
         if not user:
             return None
 
+        # Handle type conversions for fields that may be stored as TEXT
+        mfa_enabled = user.get("mfa_enabled")
+        if isinstance(mfa_enabled, str):
+            mfa_enabled = mfa_enabled.lower() in ("true", "1", "yes")
+        elif mfa_enabled is None:
+            mfa_enabled = False
+
+        is_super_admin = user.get("is_super_admin")
+        if isinstance(is_super_admin, str):
+            is_super_admin = is_super_admin.lower() in ("true", "1", "yes")
+        elif is_super_admin is None:
+            is_super_admin = False
+
         return {
             "id": user["id"],
             "email": user["email"],
             "name": user["name"],
             "organization_id": user["organization_id"],
             "role": user["role"],
-            "status": user["status"],
-            "mfa_enabled": user["mfa_enabled"],
+            "status": user.get("status"),
+            "mfa_enabled": mfa_enabled,
             "last_login_at": user.get("last_login_at"),
-            "created_at": user["created_at"],
-            "is_super_admin": user.get("is_super_admin", False),
+            "created_at": user.get("created_at"),
+            "is_super_admin": is_super_admin,
             "primary_organization_id": user.get("primary_organization_id"),
         }
 

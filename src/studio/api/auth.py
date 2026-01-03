@@ -80,10 +80,10 @@ class UserResponse(BaseModel):
     name: str
     organization_id: str
     role: str
-    status: str = None
-    mfa_enabled: bool = None
-    last_login_at: str = None
-    created_at: str = None
+    status: str | None = None
+    mfa_enabled: bool | None = None
+    last_login_at: str | None = None
+    created_at: str | None = None
 
 
 class RegisterResponse(BaseModel):
