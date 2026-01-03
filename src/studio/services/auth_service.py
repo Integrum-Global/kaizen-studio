@@ -3,8 +3,14 @@ Authentication Service
 
 Handles JWT token generation, validation, and user authentication.
 Uses RS256 algorithm for production security.
+
+EATP Integration:
+- Creates PseudoAgent trust chains for authenticated users
+- Stores session-to-human mapping in Redis for traceability
+- Every user action can be traced back to the authorizing human
 """
 
+import json
 import uuid
 from datetime import UTC, datetime, timedelta
 
@@ -787,3 +793,159 @@ class AuthService:
         """
         user = await self.get_user_by_id(user_id)
         return user.get("is_super_admin", False) if user else False
+
+    # =========================================================================
+    # EATP PseudoAgent Integration
+    # =========================================================================
+
+    async def create_pseudo_agent_for_user(
+        self,
+        user: dict,
+        session_id: str,
+        auth_provider: str = "session",
+    ) -> dict:
+        """
+        Create a PseudoAgent trust chain for a logged-in user.
+
+        EATP: Every user gets a PseudoAgent that represents them in the
+        trust system. This ensures all actions trace back to a human.
+
+        Args:
+            user: User data dictionary
+            session_id: JWT token ID (jti) for session tracking
+            auth_provider: Authentication provider (session, oauth, sso)
+
+        Returns:
+            PseudoAgent data with trust chain info
+        """
+        from studio.services.trust_service import HumanOrigin, TrustService
+
+        trust_service = TrustService()
+        now = datetime.now(UTC)
+
+        # Create HumanOrigin from user
+        human_origin = HumanOrigin(
+            human_id=user.get("email", user.get("id", "")),
+            display_name=user.get("name", user.get("email", "")),
+            auth_provider=auth_provider,
+            session_id=session_id,
+            authenticated_at=now.isoformat(),
+        )
+
+        # Create PseudoAgent ID (prefixed to distinguish from regular agents)
+        pseudo_agent_id = f"pseudo:{user['id']}"
+
+        # Check if PseudoAgent already has active trust chain
+        existing_chain = await trust_service.get_trust_chain(pseudo_agent_id)
+        if existing_chain and existing_chain.get("status") == "active":
+            # Update session mapping and return existing
+            await self._store_session_mapping(session_id, user, human_origin)
+            return {
+                "pseudo_agent_id": pseudo_agent_id,
+                "human_origin": human_origin.to_dict(),
+                "trust_chain": existing_chain,
+                "is_new": False,
+            }
+
+        # Get or create default authority for the organization
+        authorities = await trust_service.list_authorities(
+            organization_id=user.get("organization_id")
+        )
+        if authorities:
+            authority_id = authorities[0]["id"]
+        else:
+            # Create default organizational authority
+            authority = await trust_service.create_authority(
+                organization_id=user.get("organization_id", ""),
+                name="Default Authority",
+                description="Auto-created authority for EATP",
+                authority_type="organizational",
+            )
+            authority_id = authority["id"]
+
+        # Establish trust chain for PseudoAgent
+        chain = await trust_service.establish_trust(
+            agent_id=pseudo_agent_id,
+            authority_id=authority_id,
+            organization_id=user.get("organization_id", ""),
+            human_origin=human_origin,
+            capabilities=["*"],  # PseudoAgents have all capabilities
+            constraints=[],  # No constraints for human users
+            expires_in_days=1,  # Short-lived, renewed on each login
+        )
+
+        # Store session-to-human mapping in Redis
+        await self._store_session_mapping(session_id, user, human_origin)
+
+        return {
+            "pseudo_agent_id": pseudo_agent_id,
+            "human_origin": human_origin.to_dict(),
+            "trust_chain": chain,
+            "is_new": True,
+        }
+
+    async def _store_session_mapping(
+        self,
+        session_id: str,
+        user: dict,
+        human_origin: "HumanOrigin",
+    ) -> None:
+        """
+        Store session-to-human mapping in Redis for EATP traceability.
+
+        This allows any request with a session to be traced back to
+        the authorizing human.
+        """
+        key = f"eatp:session:{session_id}"
+        mapping = {
+            "user_id": user.get("id"),
+            "email": user.get("email"),
+            "name": user.get("name"),
+            "organization_id": user.get("organization_id"),
+            "human_origin": human_origin.to_dict(),
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        # Store for 24 hours (matches PseudoAgent trust chain expiry)
+        self.redis_client.setex(key, 86400, json.dumps(mapping))
+
+    def get_session_human_origin(self, session_id: str) -> dict | None:
+        """
+        Get human origin data for a session.
+
+        Args:
+            session_id: JWT token ID (jti)
+
+        Returns:
+            Human origin data if found, None otherwise
+        """
+        key = f"eatp:session:{session_id}"
+        data = self.redis_client.get(key)
+        if data:
+            mapping = json.loads(data)
+            return mapping.get("human_origin")
+        return None
+
+    async def revoke_user_pseudo_agent(self, user_id: str, reason: str) -> dict:
+        """
+        Revoke a user's PseudoAgent trust chain.
+
+        EATP: When a user's access is revoked, their PseudoAgent
+        and all downstream delegations must be revoked.
+
+        Args:
+            user_id: User's unique identifier
+            reason: Reason for revocation
+
+        Returns:
+            Revocation result
+        """
+        from studio.services.trust_service import TrustService
+
+        trust_service = TrustService()
+        pseudo_agent_id = f"pseudo:{user_id}"
+
+        return await trust_service.revoke_cascade(
+            agent_id=pseudo_agent_id,
+            reason=reason,
+            initiated_by="system",
+        )

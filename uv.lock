@@ -1491,18 +1491,19 @@ wheels = [
 
 [[package]]
 name = "kailash-kaizen"
-version = "0.7.1"
+version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bcrypt" },
     { name = "kailash" },
     { name = "pydantic" },
     { name = "pyjwt" },
+    { name = "redis" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9d/2a/3e96f93adc910038f07eab829d6434a627448b0d28384ac9885af232252a/kailash_kaizen-0.7.1.tar.gz", hash = "sha256:9593c64ef4870bd037a9b72d40da6de6af69fcef613b018f16ef7c9d9e7a173b", size = 4328988, upload-time = "2025-12-25T07:13:04.836Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/28/65/8b6fa5210996403e4a47c7346817c9794771d0b9b5c58ab1c2b5470fe470/kailash_kaizen-0.8.1.tar.gz", hash = "sha256:ef0e857a5a484a4ed2cddf1e80dfd04f7bfe29b871d239e2feb95f7ee94b1708", size = 4993112, upload-time = "2026-01-02T12:14:31.712Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/0d/5894bd857d649b48cbbc87b0b233b48b2e4b200c8fd4e18bd45bd8f16a44/kailash_kaizen-0.7.1-py3-none-any.whl", hash = "sha256:e0800e049120a29b4ebb47f13cec3b63e30489faa52c57737b7a3952f59bc5c6", size = 1173139, upload-time = "2025-12-25T07:13:02.578Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/95/b5ace5d55bda595db20618f604f53af4e0350bb20f5dfa932c6be6192483/kailash_kaizen-0.8.1-py3-none-any.whl", hash = "sha256:5f98140c855ec4234d9be168261eed0ac6f105661706f821e0580e3442faec7c", size = 1471060, upload-time = "2026-01-02T12:14:29.521Z" },
 ]
 
 [[package]]
@@ -1560,6 +1561,7 @@ test = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "pytest-dotenv" },
+    { name = "respx" },
 ]
 
 [package.metadata]
@@ -1573,7 +1575,7 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'test'", specifier = ">=0.25.0" },
     { name = "kailash", specifier = ">=0.10.13" },
     { name = "kailash-dataflow", specifier = ">=0.10.5" },
-    { name = "kailash-kaizen", specifier = ">=0.7.1" },
+    { name = "kailash-kaizen", specifier = ">=0.8.1" },
     { name = "kailash-nexus", specifier = ">=1.1.2" },
     { name = "motor", specifier = ">=3.3.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.7.0" },
@@ -1594,6 +1596,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "python-multipart", specifier = ">=0.0.6" },
     { name = "redis", specifier = ">=5.0.0" },
+    { name = "respx", marker = "extra == 'test'", specifier = ">=0.21.1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.6" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.24.0" },
 ]
@@ -3306,6 +3309,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/61/d7545dafb7ac2230c70d38d31cbfe4cc64f7144dc41f6e4e4b78ecd9f5bb/requests-toolbelt-1.0.0.tar.gz", hash = "sha256:7681a0a3d047012b5bdc0ee37d7f8f07ebe76ab08caeccfc3921ce23c88d5bc6", size = 206888, upload-time = "2023-05-01T04:11:33.229Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/3f/51/d4db610ef29373b879047326cbf6fa98b6c1969d6f6dc423279de2b1be2c/requests_toolbelt-1.0.0-py2.py3-none-any.whl", hash = "sha256:cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06", size = 54481, upload-time = "2023-05-01T04:11:28.427Z" },
+]
+
+[[package]]
+name = "respx"
+version = "0.22.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f4/7c/96bd0bc759cf009675ad1ee1f96535edcb11e9666b985717eb8c87192a95/respx-0.22.0.tar.gz", hash = "sha256:3c8924caa2a50bd71aefc07aa812f2466ff489f1848c96e954a5362d17095d91", size = 28439, upload-time = "2024-12-19T22:33:59.374Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8e/67/afbb0978d5399bc9ea200f1d4489a23c9a1dad4eee6376242b8182389c79/respx-0.22.0-py2.py3-none-any.whl", hash = "sha256:631128d4c9aba15e56903fb5f66fb1eff412ce28dd387ca3a81339e52dbd3ad0", size = 25127, upload-time = "2024-12-19T22:33:57.837Z" },
 ]
 
 [[package]]

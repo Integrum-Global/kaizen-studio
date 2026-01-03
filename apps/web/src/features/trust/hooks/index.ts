@@ -474,3 +474,88 @@ export function useAgentPipelineStatus(agentId: string, pipelineId: string) {
     enabled: !!agentId && !!pipelineId,
   });
 }
+
+// ============================================================================
+// EATP Cascade Revocation Hooks
+// ============================================================================
+
+/**
+ * Hook to get revocation impact preview
+ *
+ * Shows all agents that will be affected when revoking with cascade.
+ */
+export function useRevocationImpact(agentId: string) {
+  return useQuery({
+    queryKey: ["revocationImpact", agentId],
+    queryFn: () => trustApi.getRevocationImpact(agentId),
+    enabled: !!agentId,
+  });
+}
+
+/**
+ * Hook to revoke trust with cascade
+ *
+ * EATP Operation: Revokes target and ALL downstream agents.
+ */
+export function useRevokeCascade() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ agentId, reason }: { agentId: string; reason: string }) =>
+      trustApi.revokeCascade(agentId, reason),
+    onSuccess: (data) => {
+      // Invalidate all affected trust chains
+      data.revokedAgentIds.forEach((id) => {
+        queryClient.invalidateQueries({ queryKey: ["trustChain", id] });
+      });
+      queryClient.invalidateQueries({ queryKey: ["trustChains"] });
+      queryClient.invalidateQueries({ queryKey: ["revocationImpact"] });
+    },
+  });
+}
+
+/**
+ * Hook to revoke all delegations from a specific human
+ *
+ * EATP Operation: When a human's access is revoked (e.g., employee leaves),
+ * ALL agents they delegated to must be revoked.
+ */
+export function useRevokeByHuman() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ humanId, reason }: { humanId: string; reason: string }) =>
+      trustApi.revokeByHuman(humanId, reason),
+    onSuccess: (data) => {
+      // Invalidate all affected trust chains
+      data.revokedAgentIds.forEach((id) => {
+        queryClient.invalidateQueries({ queryKey: ["trustChain", id] });
+      });
+      queryClient.invalidateQueries({ queryKey: ["trustChains"] });
+      queryClient.invalidateQueries({ queryKey: ["auditByHumanOrigin"] });
+    },
+  });
+}
+
+/**
+ * Hook to query audit trail by human origin
+ *
+ * EATP: Query all actions ultimately authorized by a specific human.
+ */
+export function useAuditByHumanOrigin(
+  humanId: string,
+  params?: {
+    start_time?: string;
+    end_time?: string;
+    action?: string;
+    result?: import("../types").ActionResult;
+    page?: number;
+    page_size?: number;
+  }
+) {
+  return useQuery({
+    queryKey: ["auditByHumanOrigin", humanId, params],
+    queryFn: () => trustApi.queryAuditByHumanOrigin(humanId, params),
+    enabled: !!humanId,
+  });
+}

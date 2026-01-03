@@ -390,17 +390,22 @@ test.describe('Deployments - Pagination', () => {
   });
 
   test('should show pagination controls when data exists', async ({ page }) => {
-    const pagination = page.locator(
-      'text=/Page \\d+ of \\d+/, button:has-text("Previous"), button:has-text("Next"), [data-testid*="pagination"]'
-    );
+    // Separate locators for different pagination elements (regex cannot be combined with other selectors)
+    const paginationText = page.locator('text=/Page \\d+ of \\d+/');
+    const paginationButtons = page.locator('button:has-text("Previous"), button:has-text("Next"), [data-testid*="pagination"]');
     const deployments = page.locator('[data-testid*="deployment"], .deployment-card');
 
     const deploymentCount = await deployments.count();
-    const paginationCount = await pagination.count();
+    const paginationTextCount = await paginationText.count();
+    const paginationButtonsCount = await paginationButtons.count();
 
     // STRICT: If there are deployments and pagination, verify it
-    if (deploymentCount > 0 && paginationCount > 0) {
-      await expect(pagination.first()).toBeVisible();
+    if (deploymentCount > 0 && (paginationTextCount > 0 || paginationButtonsCount > 0)) {
+      if (paginationTextCount > 0) {
+        await expect(paginationText.first()).toBeVisible();
+      } else {
+        await expect(paginationButtons.first()).toBeVisible();
+      }
     }
   });
 

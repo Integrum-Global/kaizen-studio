@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { setupAuth } from "./fixtures/auth";
 
 /**
  * Tier 2: Integration Tests with Real API (NO MOCKING)
@@ -10,14 +11,9 @@ import { test, expect } from "@playwright/test";
 
 test.describe("External Agent Registration Workflow", () => {
   test.beforeEach(async ({ page }) => {
-    // Login and navigate to external agents page
-    await page.goto("/login");
-    await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL || "test@example.com");
-    await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD || "password");
-    await page.click('button[type="submit"]');
-
-    // Wait for login to complete
-    await page.waitForURL("/dashboard");
+    // Use the proper auth setup fixture
+    const authenticated = await setupAuth(page);
+    expect(authenticated).toBeTruthy();
 
     // Navigate to external agents page
     await page.goto("/settings/external-agents");

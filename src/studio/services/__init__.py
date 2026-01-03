@@ -21,6 +21,7 @@ from studio.services.rbac_service import RBACService
 from studio.services.team_service import TeamService
 from studio.services.test_service import TestService
 from studio.services.user_service import UserService
+from studio.services.trust_service import HumanOrigin, TrustService
 from studio.services.webhook_service import WebhookService
 from studio.services.workspace_service import WorkspaceService
 
@@ -44,4 +45,6 @@ __all__ = [
     "WebhookService",
     "BillingService",
     "ConnectorService",
+    "TrustService",
+    "HumanOrigin",
 ]

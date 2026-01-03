@@ -37,6 +37,8 @@ export { useTrustStore } from "./store/trust";
 // Export components - Dashboard & Viewers
 export { TrustDashboard } from "./components/TrustDashboard";
 export { TrustStatusBadge } from "./components/TrustStatusBadge";
+export { HumanOriginBadge } from "./components/HumanOriginBadge";
+export { CascadeRevocationModal } from "./components/CascadeRevocationModal";
 export { TrustChainViewer } from "./components/TrustChainViewer";
 
 // Export components - Trust Management (Phase 2)
@@ -149,6 +151,7 @@ export {
   ConstraintType,
   EnforcementMode,
   HealthStatus,
+  AuthProvider,
 } from "./types";
 
 export type {
@@ -166,4 +169,13 @@ export type {
   TrustValidationInput,
   AgentWithTrust,
   AgentSearchFilters,
+  HumanOrigin,
+  ExecutionContext,
+  EATPDelegationRecord,
+  EATPAuditAnchor,
+  CascadeRevocationResult,
+  RevocationImpactPreview,
+  AffectedAgent,
+  ConstraintTighteningResult,
+  ConstraintTighteningViolation,
 } from "./types";

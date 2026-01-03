@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { setupAuth } from "./fixtures/auth";
 
 /**
  * Tier 3: End-to-End Tests with Real Infrastructure (NO MOCKING)
@@ -9,12 +10,9 @@ import { test, expect } from "@playwright/test";
 
 test.describe("External Agent Complete Lifecycle", () => {
   test.beforeEach(async ({ page }) => {
-    // Login
-    await page.goto("/login");
-    await page.fill('input[name="email"]', process.env.TEST_USER_EMAIL || "test@example.com");
-    await page.fill('input[name="password"]', process.env.TEST_USER_PASSWORD || "password");
-    await page.click('button[type="submit"]');
-    await page.waitForURL("/dashboard");
+    // Use the proper auth setup fixture
+    const authenticated = await setupAuth(page);
+    expect(authenticated).toBeTruthy();
   });
 
   test("complete lifecycle: register → view details → governance enforcement", async ({ page }) => {

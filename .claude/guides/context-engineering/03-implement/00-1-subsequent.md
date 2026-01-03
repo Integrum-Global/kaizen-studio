@@ -53,6 +53,10 @@
    - Ensure that you test comprehensively as you implement
      - with all tests passing at the end of each phase.
      - Always write your tests based on the intent of what we are trying to achieve and not just naive technical assertions.
-   - Write your docs in the respective apps accordingly, using as many files as required
+   - Write your docs in the respective apps accordingly, using as many files as required and name them sequentially 01-, 02-, etc.
      - capture the essence and intent, the what it is, and how to use it
      - and not status/progress/reports and other irrelevant information.
+   - Also update the following docs accordingly if required
+     - .claude/agents/frameworks/kaizen-specialist.md
+     - .claude/skills/04-kaizen
+     - sdk-users/apps/kaizen

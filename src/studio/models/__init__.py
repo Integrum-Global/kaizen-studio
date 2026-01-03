@@ -71,6 +71,10 @@ from studio.models.usage_record import UsageRecord
 from studio.models.user import User
 from studio.models.user_identity import UserIdentity
 from studio.models.user_organization import UserOrganization
+from studio.models.trust_audit_anchor import TrustAuditAnchor
+from studio.models.trust_authority import TrustAuthority
+from studio.models.trust_chain import TrustChain
+from studio.models.trust_delegation import TrustDelegation
 from studio.models.webhook import Webhook
 from studio.models.webhook_delivery import WebhookDelivery
 from studio.models.workspace import Workspace
@@ -119,4 +123,8 @@ __all__ = [
     "InvocationLineage",
     "Policy",
     "PolicyAssignment",
+    "TrustChain",
+    "TrustDelegation",
+    "TrustAuditAnchor",
+    "TrustAuthority",
 ]

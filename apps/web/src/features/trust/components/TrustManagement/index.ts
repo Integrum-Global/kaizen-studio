@@ -15,6 +15,7 @@ export { DelegationWizard } from "./DelegationWizard";
 
 // Dialogs
 export { RevokeTrustDialog } from "./RevokeTrustDialog";
+export { CascadeRevocationModal } from "../CascadeRevocationModal";
 
 // Schema exports
 export type {

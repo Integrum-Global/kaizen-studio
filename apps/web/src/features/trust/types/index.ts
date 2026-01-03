@@ -71,6 +71,122 @@ export enum TrustStatus {
   INVALID = "invalid",
 }
 
+/**
+ * Supported authentication providers
+ */
+export enum AuthProvider {
+  OKTA = "okta",
+  AZURE_AD = "azure_ad",
+  GOOGLE = "google",
+  SAML = "saml",
+  OIDC = "oidc",
+  LDAP = "ldap",
+  SESSION = "session",
+  CUSTOM = "custom",
+}
+
+// ============================================================================
+// EATP Human Origin Types (Enterprise Agent Trust Protocol)
+// ============================================================================
+
+/**
+ * Human Origin - The human who ultimately authorized an action
+ *
+ * This is the CRITICAL data structure in EATP. Every agent action
+ * MUST be traceable back to a human who authorized it.
+ */
+export interface HumanOrigin {
+  humanId: string; // Unique ID (email or user_id from auth)
+  displayName: string; // Human-readable name
+  authProvider: AuthProvider; // How they authenticated
+  sessionId: string; // Session ID for correlation/revocation
+  authenticatedAt: string; // ISO 8601 datetime
+}
+
+/**
+ * Execution context that flows through all EATP operations
+ */
+export interface ExecutionContext {
+  humanOrigin: HumanOrigin;
+  delegationChain: string[]; // Agent IDs from human to current
+  delegationDepth: number; // Distance from human (0 = direct)
+  constraints: Record<string, unknown>;
+  traceId: string; // Unique ID for correlation
+}
+
+/**
+ * Enhanced DelegationRecord with human origin (EATP)
+ */
+export interface EATPDelegationRecord extends DelegationRecord {
+  human_origin?: HumanOrigin; // Who ultimately authorized
+  delegation_chain?: string[]; // Full path from human
+  delegation_depth?: number; // Distance from human
+}
+
+/**
+ * Enhanced AuditAnchor with human origin (EATP)
+ */
+export interface EATPAuditAnchor extends AuditAnchor {
+  human_origin?: HumanOrigin; // Who ultimately authorized this action
+}
+
+/**
+ * Cascade revocation result
+ */
+export interface CascadeRevocationResult {
+  revokedAgentIds: string[];
+  totalRevoked: number;
+  reason: string;
+  initiatedBy: string;
+  completedAt: string; // ISO 8601 datetime
+}
+
+/**
+ * Impact preview before cascade revocation
+ */
+export interface RevocationImpactPreview {
+  targetAgentId: string;
+  targetAgentName?: string;
+  affectedAgents: AffectedAgent[];
+  totalAffected: number;
+  hasActiveWorkloads: boolean;
+  warnings: string[];
+}
+
+/**
+ * Agent affected by cascade revocation
+ */
+export interface AffectedAgent {
+  agentId: string;
+  agentName?: string;
+  delegationDepth: number;
+  activeTasks: number;
+  status: TrustStatus;
+}
+
+/**
+ * Constraint tightening validation result
+ */
+export interface ConstraintTighteningResult {
+  valid: boolean;
+  violations: ConstraintTighteningViolation[];
+}
+
+/**
+ * Constraint tightening violation detail
+ */
+export interface ConstraintTighteningViolation {
+  constraintType:
+    | "cost_limit"
+    | "time_window"
+    | "resources"
+    | "rate_limit"
+    | "geo_restrictions";
+  parentValue: unknown;
+  childValue: unknown;
+  message: string;
+}
+
 // ============================================================================
 // Core Data Structures
 // ============================================================================
@@ -267,6 +383,7 @@ export interface DelegateTrustRequest {
   additional_constraints?: string[];
   expires_at?: string | null; // ISO 8601 datetime
   metadata?: Record<string, any>;
+  context?: ExecutionContext; // EATP execution context
 }
 
 /**
@@ -298,6 +415,7 @@ export interface AuditActionRequest {
 export interface RevokeTrustRequest {
   agent_id: string;
   reason?: string;
+  cascade?: boolean; // Whether to cascade to downstream agents
 }
 
 /**

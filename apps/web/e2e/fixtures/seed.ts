@@ -8,6 +8,7 @@ import {
   createTestGateway,
   createTestConnector,
   createTestWebhook,
+  type WebhookEventType,
 } from "./test-data";
 
 /**
@@ -179,8 +180,15 @@ export async function seedTestData(page: Page): Promise<SeededTestData> {
   }
 
   // Create test webhooks (at least 3)
+  // Valid events: agent.created, agent.updated, agent.deleted,
+  //               deployment.created, deployment.active, deployment.failed, deployment.stopped,
+  //               pipeline.created, pipeline.updated, user.invited, user.joined
   console.log("Creating test webhooks...");
-  const webhookConfigs = [
+  const webhookConfigs: Array<{
+    name: string;
+    url: string;
+    events: WebhookEventType[];
+  }> = [
     {
       name: "Agent Events Webhook",
       url: "https://webhook.example.com/agents",
@@ -189,17 +197,17 @@ export async function seedTestData(page: Page): Promise<SeededTestData> {
     {
       name: "Pipeline Events Webhook",
       url: "https://webhook.example.com/pipelines",
-      events: ["pipeline.deployed", "pipeline.failed"],
+      events: ["pipeline.created", "pipeline.updated"],
     },
     {
       name: "Deployment Events Webhook",
       url: "https://webhook.example.com/deployments",
-      events: ["deployment.started", "deployment.completed"],
+      events: ["deployment.created", "deployment.active", "deployment.failed", "deployment.stopped"],
     },
     {
-      name: "System Events Webhook",
-      url: "https://webhook.example.com/system",
-      events: ["system.error", "system.warning"],
+      name: "User Events Webhook",
+      url: "https://webhook.example.com/users",
+      events: ["user.invited", "user.joined"],
     },
   ];
 

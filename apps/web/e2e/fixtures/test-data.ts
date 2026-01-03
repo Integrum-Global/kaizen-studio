@@ -67,9 +67,16 @@ export async function createTestPipeline(
   pipelineData: {
     name: string;
     description?: string;
+    organization_id?: string;
+    workspace_id?: string;
+    pattern?: string;
   }
 ): Promise<{ id: string; name: string } | null> {
   const headers = await getAuthHeaders(page);
+
+  // Generate UUIDs for required organization and workspace IDs
+  const organizationId = pipelineData.organization_id || crypto.randomUUID();
+  const workspaceId = pipelineData.workspace_id || crypto.randomUUID();
 
   const response = await page.request.post(`${API_BASE_URL}/api/v1/pipelines`, {
     headers,
@@ -77,6 +84,9 @@ export async function createTestPipeline(
       name: pipelineData.name,
       description:
         pipelineData.description || `Test pipeline: ${pipelineData.name}`,
+      organization_id: organizationId,
+      workspace_id: workspaceId,
+      pattern: pipelineData.pattern || "sequential",
       nodes: [],
       edges: [],
       status: "draft",
@@ -172,6 +182,29 @@ export async function inviteTeamMember(
 }
 
 /**
+ * Valid webhook event types (from API schema)
+ * - agent.created, agent.updated, agent.deleted
+ * - deployment.created, deployment.active, deployment.failed, deployment.stopped
+ * - pipeline.created, pipeline.updated
+ * - user.invited, user.joined
+ */
+export const VALID_WEBHOOK_EVENTS = [
+  "agent.created",
+  "agent.updated",
+  "agent.deleted",
+  "deployment.created",
+  "deployment.active",
+  "deployment.failed",
+  "deployment.stopped",
+  "pipeline.created",
+  "pipeline.updated",
+  "user.invited",
+  "user.joined",
+] as const;
+
+export type WebhookEventType = (typeof VALID_WEBHOOK_EVENTS)[number];
+
+/**
  * Create a webhook via API
  */
 export async function createTestWebhook(
@@ -179,7 +212,7 @@ export async function createTestWebhook(
   webhookData: {
     name: string;
     url: string;
-    events?: string[];
+    events?: WebhookEventType[];
   }
 ): Promise<{ id: string; name: string } | null> {
   const headers = await getAuthHeaders(page);
@@ -189,7 +222,7 @@ export async function createTestWebhook(
     data: {
       name: webhookData.name,
       url: webhookData.url,
-      events: webhookData.events || ["agent.created", "pipeline.deployed"],
+      events: webhookData.events || ["agent.created", "agent.updated"],
       active: true,
     },
   });
@@ -498,6 +531,8 @@ export async function createTestGateway(
     name: string;
     url?: string;
     type?: string;
+    api_url?: string;
+    api_key?: string;
   }
 ): Promise<{ id: string; name: string } | null> {
   const headers = await getAuthHeaders(page);
@@ -508,6 +543,8 @@ export async function createTestGateway(
       name: gatewayData.name,
       url: gatewayData.url || `https://gateway-${Date.now()}.example.com`,
       type: gatewayData.type || "rest",
+      api_url: gatewayData.api_url || "https://api.example.com",
+      api_key: gatewayData.api_key || `test-api-key-${crypto.randomUUID().slice(0, 8)}`,
       config: {
         timeout: 30,
         retries: 3,
@@ -533,10 +570,39 @@ export async function createTestConnector(
   connectorData: {
     name: string;
     type?: string;
+    connector_type?: string;
+    provider?: string;
     credentials?: Record<string, unknown>;
   }
 ): Promise<{ id: string; name: string } | null> {
   const headers = await getAuthHeaders(page);
+
+  // Determine connector_type and provider based on the legacy 'type' field or explicit values
+  const connectorType = connectorData.connector_type || connectorData.type || "database";
+  let provider = connectorData.provider;
+
+  // Set sensible default provider based on connector_type
+  if (!provider) {
+    switch (connectorType) {
+      case "database":
+        provider = "postgresql";
+        break;
+      case "cache":
+        provider = "redis";
+        break;
+      case "storage":
+        provider = "s3";
+        break;
+      case "streaming":
+        provider = "kafka";
+        break;
+      case "api":
+        provider = "rest";
+        break;
+      default:
+        provider = "generic";
+    }
+  }
 
   const response = await page.request.post(
     `${API_BASE_URL}/api/v1/connectors`,
@@ -545,6 +611,8 @@ export async function createTestConnector(
       data: {
         name: connectorData.name,
         type: connectorData.type || "database",
+        connector_type: connectorType,
+        provider: provider,
         credentials: connectorData.credentials || {
           host: "localhost",
           port: 5432,

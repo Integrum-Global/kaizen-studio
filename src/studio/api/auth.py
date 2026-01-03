@@ -204,6 +204,10 @@ async def register(
 
     Creates a new organization with the user as the owner.
     Also creates a default development workspace.
+
+    EATP Integration:
+    - Creates a PseudoAgent trust chain for the new user
+    - Establishes the user as a human origin in the trust system
     """
     try:
         result = await auth_service.register_user(
@@ -215,6 +219,24 @@ async def register(
 
         user = result["user"]
         tokens = auth_service.create_tokens(user)
+
+        # EATP: Create PseudoAgent for the newly registered user
+        import jwt
+        decoded = jwt.decode(tokens["access_token"], options={"verify_signature": False})
+        session_id = decoded.get("jti", "")
+
+        try:
+            await auth_service.create_pseudo_agent_for_user(
+                user=user,
+                session_id=session_id,
+                auth_provider="registration",
+            )
+        except Exception:
+            # Log but don't fail registration if PseudoAgent creation fails
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Failed to create PseudoAgent for new user {user.get('email')}"
+            )
 
         return RegisterResponse(
             user=UserResponse(**user),
@@ -242,6 +264,11 @@ async def login(
     Authenticate user and return tokens with user info.
 
     Returns access and refresh tokens along with user data on successful authentication.
+
+    EATP Integration:
+    - Creates a PseudoAgent trust chain for the user
+    - Stores session-to-human mapping for traceability
+    - All subsequent actions can be traced back to this human
     """
     user = await auth_service.authenticate_user(request.email, request.password)
 
@@ -253,6 +280,27 @@ async def login(
         )
 
     tokens = auth_service.create_tokens(user)
+
+    # EATP: Create PseudoAgent for the authenticated user
+    # Extract session ID from the access token for mapping
+    import jwt
+    decoded = jwt.decode(tokens["access_token"], options={"verify_signature": False})
+    session_id = decoded.get("jti", "")
+
+    try:
+        await auth_service.create_pseudo_agent_for_user(
+            user=user,
+            session_id=session_id,
+            auth_provider="password",
+        )
+    except Exception:
+        # Log but don't fail login if PseudoAgent creation fails
+        # This ensures backwards compatibility
+        import logging
+        logging.getLogger(__name__).warning(
+            f"Failed to create PseudoAgent for user {user.get('email')}"
+        )
+
     return LoginResponse(
         user=UserResponse(**user),
         **tokens,

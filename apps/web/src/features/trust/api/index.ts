@@ -117,6 +117,72 @@ export async function revokeTrust(request: RevokeTrustRequest): Promise<void> {
   await trustApi.post("/revoke", request);
 }
 
+// ============================================================================
+// EATP Cascade Revocation Operations
+// ============================================================================
+
+/**
+ * Get impact preview before cascade revocation
+ *
+ * Shows all agents that will be affected when revoking an agent with cascade.
+ * EATP requires cascade: when trust is revoked, all downstream delegations
+ * must be immediately invalidated.
+ */
+export async function getRevocationImpact(
+  agentId: string
+): Promise<import("../types").RevocationImpactPreview> {
+  const response = await trustApi.get(`/revoke/${agentId}/impact`);
+  return response.data;
+}
+
+/**
+ * Revoke trust with cascade to all downstream agents
+ *
+ * EATP Operation: Revokes the target agent and ALL agents that received
+ * delegated trust from it (recursively).
+ */
+export async function revokeCascade(
+  agentId: string,
+  reason: string
+): Promise<import("../types").CascadeRevocationResult> {
+  const response = await trustApi.post(`/revoke/${agentId}/cascade`, { reason });
+  return response.data;
+}
+
+/**
+ * Revoke all delegations from a specific human
+ *
+ * EATP Operation: When a human's access is revoked (e.g., employee leaves),
+ * ALL agents they delegated to must be revoked.
+ */
+export async function revokeByHuman(
+  humanId: string,
+  reason: string
+): Promise<import("../types").CascadeRevocationResult> {
+  const response = await trustApi.post(`/revoke/by-human/${humanId}`, { reason });
+  return response.data;
+}
+
+/**
+ * Get audit trail filtered by human origin
+ *
+ * EATP: Query all actions ultimately authorized by a specific human.
+ */
+export async function queryAuditByHumanOrigin(
+  humanId: string,
+  params?: {
+    start_time?: string;
+    end_time?: string;
+    action?: string;
+    result?: import("../types").ActionResult;
+    page?: number;
+    page_size?: number;
+  }
+): Promise<{ items: import("../types").EATPAuditAnchor[]; total: number }> {
+  const response = await trustApi.get(`/audit/by-human/${humanId}`, { params });
+  return response.data;
+}
+
 /**
  * Revoke a delegation
  */
