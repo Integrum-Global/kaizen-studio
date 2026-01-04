@@ -58,7 +58,8 @@ describe("ExternalAgentRegistrationWizard", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Step 2 of 6/i)).toBeInTheDocument();
-      expect(screen.getByText(/Basic Information/i)).toBeInTheDocument();
+      // Multiple elements may contain "Basic Information" - check at least one exists
+      expect(screen.getAllByText(/Basic Information/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -169,13 +170,13 @@ describe("ExternalAgentRegistrationWizard", () => {
       { wrapper: createWrapper() }
     );
 
-    // Check that all 6 steps are displayed in stepper
-    expect(screen.getByText(/Provider/i)).toBeInTheDocument();
-    expect(screen.getByText(/Info/i)).toBeInTheDocument();
-    expect(screen.getByText(/Auth/i)).toBeInTheDocument();
-    expect(screen.getByText(/Platform/i)).toBeInTheDocument();
-    expect(screen.getByText(/Governance/i)).toBeInTheDocument();
-    expect(screen.getByText(/Review/i)).toBeInTheDocument();
+    // Check that all 6 steps are displayed in stepper (may have multiple matches per step)
+    expect(screen.getAllByText(/Provider/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Info/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Auth/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Platform/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Governance/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Review/i).length).toBeGreaterThan(0);
   });
 
   it("persists form data across steps", async () => {
@@ -190,7 +191,8 @@ describe("ExternalAgentRegistrationWizard", () => {
     // Step 1: Select provider
     fireEvent.click(screen.getByLabelText(/Microsoft Teams/i));
     expect(screen.getByText(/Selected:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Microsoft Teams/i)).toBeInTheDocument();
+    // Multiple elements may contain "Microsoft Teams" - check at least one exists
+    expect(screen.getAllByText(/Microsoft Teams/i).length).toBeGreaterThan(0);
 
     // Navigate to step 2
     fireEvent.click(screen.getByRole("button", { name: /Go to next step/i }));
@@ -208,6 +210,7 @@ describe("ExternalAgentRegistrationWizard", () => {
 
     // Verify provider is still selected
     expect(screen.getByText(/Selected:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Microsoft Teams/i)).toBeInTheDocument();
+    // Multiple elements may contain "Microsoft Teams" - check at least one exists
+    expect(screen.getAllByText(/Microsoft Teams/i).length).toBeGreaterThan(0);
   });
 });

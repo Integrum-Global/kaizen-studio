@@ -51,6 +51,11 @@ class Policy:
     # Example: {"all": [{"field": "resource.status", "op": "eq", "value": "active"}]}
     conditions: str
 
+    # JSON-encoded resource references extracted from conditions
+    # Format: [{"type": "agent", "id": "agent-123", "name": "My Agent"}, ...]
+    # Used for orphan detection and reference validation
+    resource_refs: str | None
+
     # Priority for evaluation order (higher = evaluated first)
     priority: int
 

@@ -43,6 +43,7 @@
 | [36-toast](./36-toast/) | Toast notifications with variants |
 | [37-deployment](./37-deployment/) | Docker, Kubernetes, and static hosting |
 | [38-performance](./38-performance/) | Web Vitals monitoring and metrics |
+| [44-work-units](./44-work-units/) | Work units feature with creation wizard |
 
 ## Quick Start
 

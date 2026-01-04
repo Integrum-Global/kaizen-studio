@@ -184,7 +184,7 @@ describe("TeamList", () => {
     });
   });
 
-  it("should show create team button", async () => {
+  it("should show empty state prompt when no teams", async () => {
     const mockResponse: TeamResponse = {
       records: [],
       total: 0,
@@ -196,7 +196,8 @@ describe("TeamList", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText("Create Team").length).toBeGreaterThan(0);
+      // Component shows prompt to create team using button in parent
+      expect(screen.getByText(/Create your first team using the button above/i)).toBeInTheDocument();
     });
   });
 });

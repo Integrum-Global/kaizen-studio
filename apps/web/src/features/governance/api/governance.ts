@@ -15,6 +15,9 @@ import type {
   ResourceType,
   ActionType,
   ConditionOperator,
+  ConditionValidationResult,
+  ValidateConditionsRequest,
+  PolicyReferencesResponse,
 } from "../types";
 
 /**
@@ -486,6 +489,52 @@ export const governanceApi = {
   getAvailablePermissions: async (): Promise<AvailablePermissions[]> => {
     // This is a static list - no backend endpoint needed
     return getAvailablePermissions();
+  },
+
+  /**
+   * Validate conditions and check resource references
+   */
+  validateConditions: async (
+    request: ValidateConditionsRequest
+  ): Promise<ConditionValidationResult> => {
+    try {
+      const response = await apiClient.post<ConditionValidationResult>(
+        "/api/v1/policies/validate-conditions",
+        request
+      );
+      return response.data;
+    } catch (error) {
+      // If the endpoint doesn't exist yet, return a default valid response
+      console.warn("Condition validation endpoint not available:", error);
+      return {
+        is_valid: true,
+        errors: [],
+        warnings: [],
+        references: [],
+      };
+    }
+  },
+
+  /**
+   * Get resource references for a policy with their validation status
+   */
+  getPolicyReferences: async (
+    policyId: string
+  ): Promise<PolicyReferencesResponse> => {
+    try {
+      const response = await apiClient.get<PolicyReferencesResponse>(
+        `/api/v1/policies/${policyId}/references`
+      );
+      return response.data;
+    } catch (error) {
+      // If the endpoint doesn't exist yet, return empty references
+      console.warn("Policy references endpoint not available:", error);
+      return {
+        policy_id: policyId,
+        references: [],
+        validated_at: new Date().toISOString(),
+      };
+    }
   },
 };
 

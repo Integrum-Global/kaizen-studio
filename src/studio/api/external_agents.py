@@ -139,7 +139,77 @@ class GovernanceStatusResponse(BaseModel):
     budget: dict
     rate_limit: dict
     policy: dict
+    approval: dict
     timestamp: str
+
+
+class BudgetStatusResponse(BaseModel):
+    """Budget status response."""
+
+    external_agent_id: str
+    organization_id: str
+    period: str
+    period_start: str
+    period_end: str
+    cost_used: float
+    cost_limit: float
+    cost_remaining: float
+    invocations: int
+    invocations_limit: int
+    invocations_remaining: int
+    usage_percentage: float
+    warning_triggered: bool
+    limit_exceeded: bool
+
+
+class UpdateBudgetConfigRequest(BaseModel):
+    """Update budget configuration request."""
+
+    monthly_budget_usd: float | None = Field(None, ge=0)
+    daily_budget_usd: float | None = Field(None, ge=-1)  # -1 = unlimited
+    monthly_execution_limit: int | None = Field(None, ge=-1)  # -1 = unlimited
+    warning_threshold: float | None = Field(None, ge=0, le=1)
+    degradation_threshold: float | None = Field(None, ge=0, le=1)
+    enforcement_mode: str | None = Field(None, pattern=r"^(hard|soft)$")
+
+
+# Approval models
+class ApprovalRequestResponse(BaseModel):
+    """Approval request response."""
+
+    id: str
+    external_agent_id: str
+    organization_id: str
+    requested_by_user_id: str
+    requested_by_team_id: str | None = None
+    trigger_reason: str
+    payload_summary: str
+    estimated_cost: float | None = None
+    estimated_tokens: int | None = None
+    status: str
+    created_at: str
+    expires_at: str | None = None
+    required_approvals: int
+    approval_count: int
+    rejection_count: int
+
+
+class ApprovalDecisionRequest(BaseModel):
+    """Approval decision request."""
+
+    reason: str | None = Field(None, max_length=1000)
+    metadata: dict | None = Field(default_factory=dict)
+
+
+class ApprovalDecisionResponse(BaseModel):
+    """Approval decision response."""
+
+    request_id: str
+    status: str
+    decision: str
+    approved_by: str | None = None
+    rejected_by: str | None = None
+    reason: str | None = None
 
 
 # ===================
@@ -527,4 +597,474 @@ async def get_governance_status(
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Failed to get governance status: {str(e)}"
+        )
+
+
+@router.get(
+    "/{agent_id}/budget",
+    response_model=BudgetStatusResponse,
+)
+async def get_budget_status(
+    agent_id: str,
+    service: ExternalAgentService = Depends(get_external_agent_service),
+    current_user: dict = Depends(require_permission("external_agents:read")),
+):
+    """
+    Get detailed budget status for external agent.
+
+    Returns:
+    - Period information (monthly/daily)
+    - Cost usage and limits
+    - Invocation counts and limits
+    - Warning and limit status
+
+    Requires: read:external_agent permission
+    """
+    try:
+        # Verify agent exists and user has access
+        agent = await service.get(agent_id)
+        if not agent:
+            raise HTTPException(
+                status_code=404, detail=f"External agent {agent_id} not found"
+            )
+
+        if agent.get("organization_id") != current_user["organization_id"]:
+            raise HTTPException(
+                status_code=403, detail="Access denied to this external agent"
+            )
+
+        # Get budget status from enforcer
+        from kaizen.trust.governance import BudgetScope
+
+        scope = BudgetScope(
+            organization_id=current_user["organization_id"],
+            agent_id=agent_id,
+        )
+
+        budget_status = await service.governance_service.budget_enforcer.get_budget_status(
+            agent_id=agent_id,
+            scope=scope,
+        )
+
+        return {
+            "external_agent_id": agent_id,
+            "organization_id": current_user["organization_id"],
+            "period": budget_status.period,
+            "period_start": budget_status.period_start.isoformat(),
+            "period_end": budget_status.period_end.isoformat(),
+            "cost_used": budget_status.cost_used,
+            "cost_limit": budget_status.cost_limit or 0.0,
+            "cost_remaining": budget_status.cost_remaining or 0.0,
+            "invocations": budget_status.invocations,
+            "invocations_limit": budget_status.invocations_limit or 0,
+            "invocations_remaining": budget_status.invocations_remaining or 0,
+            "usage_percentage": budget_status.usage_percentage,
+            "warning_triggered": budget_status.warning_triggered,
+            "limit_exceeded": budget_status.limit_exceeded,
+        }
+
+    except HTTPException:
+        raise
+    except ImportError:
+        # Governance module not available
+        raise HTTPException(
+            status_code=503,
+            detail="Budget tracking not available (governance module not installed)"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get budget status: {str(e)}"
+        )
+
+
+@router.patch(
+    "/{agent_id}/budget/config",
+)
+async def update_budget_config(
+    agent_id: str,
+    data: UpdateBudgetConfigRequest,
+    service: ExternalAgentService = Depends(get_external_agent_service),
+    current_user: dict = Depends(require_permission("external_agents:update")),
+):
+    """
+    Update budget configuration for external agent.
+
+    Allows updating:
+    - Monthly and daily budget limits
+    - Execution limits
+    - Warning and degradation thresholds
+    - Enforcement mode (hard/soft)
+
+    Requires: update:external_agent permission
+    """
+    try:
+        # Verify agent exists and user has access
+        agent = await service.get(agent_id)
+        if not agent:
+            raise HTTPException(
+                status_code=404, detail=f"External agent {agent_id} not found"
+            )
+
+        if agent.get("organization_id") != current_user["organization_id"]:
+            raise HTTPException(
+                status_code=403, detail="Access denied to this external agent"
+            )
+
+        # Build updates for external agent model
+        updates = {}
+        if data.monthly_budget_usd is not None:
+            updates["budget_limit_monthly"] = data.monthly_budget_usd
+        if data.daily_budget_usd is not None:
+            updates["budget_limit_daily"] = data.daily_budget_usd
+
+        # Update agent if there are changes
+        if updates:
+            await service.update(agent_id, updates)
+
+        # Return updated budget status
+        from kaizen.trust.governance import BudgetScope
+
+        scope = BudgetScope(
+            organization_id=current_user["organization_id"],
+            agent_id=agent_id,
+        )
+
+        budget_status = await service.governance_service.budget_enforcer.get_budget_status(
+            agent_id=agent_id,
+            scope=scope,
+        )
+
+        return {
+            "message": "Budget configuration updated",
+            "external_agent_id": agent_id,
+            "budget_limit_monthly": data.monthly_budget_usd or agent.get("budget_limit_monthly"),
+            "budget_limit_daily": data.daily_budget_usd or agent.get("budget_limit_daily"),
+            "current_usage": {
+                "cost_used": budget_status.cost_used,
+                "invocations": budget_status.invocations,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except ImportError:
+        raise HTTPException(
+            status_code=503,
+            detail="Budget configuration not available (governance module not installed)"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update budget config: {str(e)}"
+        )
+
+
+# ===================
+# Approval Endpoints
+# ===================
+
+
+# Create approval router with a different prefix
+approval_router = APIRouter(prefix="/approvals", tags=["Approvals"])
+
+
+def _format_approval_request(request) -> dict:
+    """Format ApprovalRequest for API response."""
+    return {
+        "id": request.id,
+        "external_agent_id": request.external_agent_id,
+        "organization_id": request.organization_id,
+        "requested_by_user_id": request.requested_by_user_id,
+        "requested_by_team_id": request.requested_by_team_id,
+        "trigger_reason": request.trigger_reason,
+        "payload_summary": request.payload_summary,
+        "estimated_cost": request.estimated_cost,
+        "estimated_tokens": request.estimated_tokens,
+        "status": request.status.value if hasattr(request.status, "value") else request.status,
+        "created_at": request.created_at.isoformat() if request.created_at else None,
+        "expires_at": request.expires_at.isoformat() if request.expires_at else None,
+        "required_approvals": request.required_approvals,
+        "approval_count": len(request.approvals),
+        "rejection_count": len(request.rejections),
+    }
+
+
+@approval_router.get(
+    "/pending",
+    response_model=list[ApprovalRequestResponse],
+)
+async def get_pending_approvals(
+    organization_id: str | None = Query(None),
+    service: ExternalAgentService = Depends(get_external_agent_service),
+    current_user: dict = Depends(require_permission("approvals:read")),
+):
+    """
+    Get pending approval requests for the current user.
+
+    Returns approval requests that the current user can approve/reject.
+
+    Requires: read:approvals permission
+    """
+    try:
+        approval_manager = service.governance_service.approval_manager
+        if not approval_manager:
+            raise HTTPException(
+                status_code=503,
+                detail="Approval workflows not available"
+            )
+
+        org_id = organization_id or current_user["organization_id"]
+        pending = await approval_manager.get_pending_requests(
+            approver_id=current_user["id"],
+            organization_id=org_id,
+        )
+
+        return [_format_approval_request(req) for req in pending]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get pending approvals: {str(e)}"
+        )
+
+
+@approval_router.get(
+    "/{request_id}",
+    response_model=ApprovalRequestResponse,
+)
+async def get_approval_request(
+    request_id: str,
+    service: ExternalAgentService = Depends(get_external_agent_service),
+    current_user: dict = Depends(require_permission("approvals:read")),
+):
+    """
+    Get an approval request by ID.
+
+    Requires: read:approvals permission
+    """
+    try:
+        approval_manager = service.governance_service.approval_manager
+        if not approval_manager:
+            raise HTTPException(
+                status_code=503,
+                detail="Approval workflows not available"
+            )
+
+        request = await approval_manager.get_request(request_id)
+        if not request:
+            raise HTTPException(
+                status_code=404, detail=f"Approval request {request_id} not found"
+            )
+
+        # Verify organization access
+        if request.organization_id != current_user["organization_id"]:
+            raise HTTPException(
+                status_code=403, detail="Access denied to this approval request"
+            )
+
+        return _format_approval_request(request)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get approval request: {str(e)}"
+        )
+
+
+@approval_router.post(
+    "/{request_id}/approve",
+    response_model=ApprovalDecisionResponse,
+)
+async def approve_request(
+    request_id: str,
+    data: ApprovalDecisionRequest,
+    service: ExternalAgentService = Depends(get_external_agent_service),
+    current_user: dict = Depends(require_permission("approvals:approve")),
+):
+    """
+    Approve an approval request.
+
+    Requires: approve:approvals permission
+    """
+    try:
+        approval_manager = service.governance_service.approval_manager
+        if not approval_manager:
+            raise HTTPException(
+                status_code=503,
+                detail="Approval workflows not available"
+            )
+
+        from kaizen.trust.governance import (
+            ApprovalNotFoundError,
+            ApprovalExpiredError,
+            AlreadyDecidedError,
+            SelfApprovalNotAllowedError,
+            UnauthorizedApproverError,
+        )
+
+        try:
+            result = await approval_manager.approve(
+                request_id=request_id,
+                approver_id=current_user["id"],
+                reason=data.reason,
+                metadata=data.metadata,
+            )
+
+            return {
+                "request_id": result.id,
+                "status": result.status.value if hasattr(result.status, "value") else result.status,
+                "decision": "approved",
+                "approved_by": current_user["id"],
+                "reason": data.reason,
+            }
+
+        except ApprovalNotFoundError:
+            raise HTTPException(
+                status_code=404, detail=f"Approval request {request_id} not found"
+            )
+        except ApprovalExpiredError:
+            raise HTTPException(
+                status_code=410, detail=f"Approval request {request_id} has expired"
+            )
+        except AlreadyDecidedError as e:
+            raise HTTPException(
+                status_code=409, detail=f"Request already {e.status.value}"
+            )
+        except SelfApprovalNotAllowedError:
+            raise HTTPException(
+                status_code=403, detail="Self-approval is not allowed"
+            )
+        except UnauthorizedApproverError:
+            raise HTTPException(
+                status_code=403, detail="You are not authorized to approve this request"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to approve request: {str(e)}"
+        )
+
+
+@approval_router.post(
+    "/{request_id}/reject",
+    response_model=ApprovalDecisionResponse,
+)
+async def reject_request(
+    request_id: str,
+    data: ApprovalDecisionRequest,
+    service: ExternalAgentService = Depends(get_external_agent_service),
+    current_user: dict = Depends(require_permission("approvals:approve")),
+):
+    """
+    Reject an approval request.
+
+    A reason is required for rejection.
+
+    Requires: approve:approvals permission
+    """
+    try:
+        if not data.reason:
+            raise HTTPException(
+                status_code=400, detail="Reason is required for rejection"
+            )
+
+        approval_manager = service.governance_service.approval_manager
+        if not approval_manager:
+            raise HTTPException(
+                status_code=503,
+                detail="Approval workflows not available"
+            )
+
+        from kaizen.trust.governance import (
+            ApprovalNotFoundError,
+            AlreadyDecidedError,
+            UnauthorizedApproverError,
+        )
+
+        try:
+            result = await approval_manager.reject(
+                request_id=request_id,
+                approver_id=current_user["id"],
+                reason=data.reason,
+                metadata=data.metadata,
+            )
+
+            return {
+                "request_id": result.id,
+                "status": result.status.value if hasattr(result.status, "value") else result.status,
+                "decision": "rejected",
+                "rejected_by": current_user["id"],
+                "reason": data.reason,
+            }
+
+        except ApprovalNotFoundError:
+            raise HTTPException(
+                status_code=404, detail=f"Approval request {request_id} not found"
+            )
+        except AlreadyDecidedError as e:
+            raise HTTPException(
+                status_code=409, detail=f"Request already {e.status.value}"
+            )
+        except UnauthorizedApproverError:
+            raise HTTPException(
+                status_code=403, detail="You are not authorized to reject this request"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to reject request: {str(e)}"
+        )
+
+
+@router.get(
+    "/{agent_id}/approvals/pending",
+    response_model=list[ApprovalRequestResponse],
+)
+async def get_agent_pending_approvals(
+    agent_id: str,
+    service: ExternalAgentService = Depends(get_external_agent_service),
+    current_user: dict = Depends(require_permission("approvals:read")),
+):
+    """
+    Get pending approval requests for a specific external agent.
+
+    Requires: read:approvals permission
+    """
+    try:
+        # Verify agent exists and user has access
+        agent = await service.get(agent_id)
+        if not agent:
+            raise HTTPException(
+                status_code=404, detail=f"External agent {agent_id} not found"
+            )
+
+        if agent.get("organization_id") != current_user["organization_id"]:
+            raise HTTPException(
+                status_code=403, detail="Access denied to this external agent"
+            )
+
+        approval_manager = service.governance_service.approval_manager
+        if not approval_manager:
+            raise HTTPException(
+                status_code=503,
+                detail="Approval workflows not available"
+            )
+
+        pending = await approval_manager.store.get_pending_for_agent(
+            agent_id=agent_id,
+            organization_id=current_user["organization_id"],
+        )
+
+        return [_format_approval_request(req) for req in pending]
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get pending approvals: {str(e)}"
         )

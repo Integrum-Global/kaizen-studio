@@ -2,27 +2,82 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderWithProviders, screen, waitFor, userEvent } from "@/test/utils";
 import { HealthDashboard } from "../HealthDashboard";
 import { QueryClient } from "@tanstack/react-query";
-import * as healthApi from "../../api/health";
-import type { SystemHealth } from "../../types";
+import { healthApi } from "../../api/health";
+import type { SystemHealth, ServiceStatus, Incident } from "../../types";
 
 // Mock the health API
-vi.mock("../../api/health", () => ({
-  healthApi: {
+vi.mock("../../api/health", () => {
+  const mockApi = {
     getSystemHealth: vi.fn(),
-    getAllServices: vi.fn(),
     getIncidents: vi.fn(),
+    exportReport: vi.fn(),
+  };
+  return {
+    healthApi: mockApi,
+    default: mockApi,
+  };
+});
+
+// Mock data matching the actual component structure
+const mockServices: ServiceStatus[] = [
+  {
+    id: "1",
+    name: "API Gateway",
+    status: "healthy",
+    uptime: 99.9,
+    latency: 45,
+    lastCheck: new Date().toISOString(),
+    description: "Main API gateway",
   },
-}));
+  {
+    id: "2",
+    name: "Database",
+    status: "healthy",
+    uptime: 99.8,
+    latency: 12,
+    lastCheck: new Date().toISOString(),
+    description: "Primary database",
+  },
+  {
+    id: "3",
+    name: "Cache",
+    status: "degraded",
+    uptime: 98.5,
+    latency: 85,
+    lastCheck: new Date().toISOString(),
+    description: "Redis cache",
+  },
+];
+
+const mockIncidents: Incident[] = [
+  {
+    id: "1",
+    title: "Database slowdown",
+    severity: "medium",
+    startedAt: new Date(Date.now() - 3600000).toISOString(),
+    description: "Increased query latency",
+    affectedServices: ["Database"],
+  },
+];
 
 const mockSystemHealth: SystemHealth = {
+  status: "healthy",
   overallStatus: "healthy",
-  totalServices: 6,
-  healthyServices: 4,
+  totalServices: 3,
+  healthyServices: 2,
   degradedServices: 1,
-  downServices: 1,
-  averageLatency: 52,
-  averageUptime: 98.5,
+  downServices: 0,
+  averageLatency: 47,
+  averageUptime: 99.4,
   lastUpdated: new Date().toISOString(),
+  services: mockServices,
+  metrics: {
+    responseTime: { avg: 47, p95: 120, p99: 200 },
+    errorRate: 0.1,
+    requestCount: 10000,
+    cpu: 45,
+    memory: 62,
+  },
 };
 
 describe("HealthDashboard", () => {
@@ -39,26 +94,20 @@ describe("HealthDashboard", () => {
 
   describe("rendering", () => {
     it("should render header with title", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
-      vi.mocked(healthApi.healthApi.getAllServices).mockResolvedValue([]);
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
-      expect(screen.getByText("System Health")).toBeInTheDocument();
+      expect(screen.getByText("System Health Status")).toBeInTheDocument();
       expect(
-        screen.getByText("Monitor service status and performance")
+        screen.getByText("Monitor system health and service availability")
       ).toBeInTheDocument();
     });
 
     it("should render refresh button", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
-      vi.mocked(healthApi.healthApi.getAllServices).mockResolvedValue([]);
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
@@ -68,13 +117,10 @@ describe("HealthDashboard", () => {
     });
 
     it("should render loading state initially", () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockImplementation(
+      vi.mocked(healthApi.getSystemHealth).mockImplementation(
         () => new Promise(() => {}) // Never resolves
       );
-      vi.mocked(healthApi.healthApi.getAllServices).mockImplementation(
-        () => new Promise(() => {})
-      );
-      vi.mocked(healthApi.healthApi.getIncidents).mockImplementation(
+      vi.mocked(healthApi.getIncidents).mockImplementation(
         () => new Promise(() => {})
       );
 
@@ -86,17 +132,16 @@ describe("HealthDashboard", () => {
     });
 
     it("should render error state for system health", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockRejectedValue(
+      vi.mocked(healthApi.getSystemHealth).mockRejectedValue(
         new Error("Failed to fetch")
       );
-      vi.mocked(healthApi.healthApi.getAllServices).mockResolvedValue([]);
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
         expect(
-          screen.getByText("Failed to load system health")
+          screen.getByText(/Failed to load health data/i)
         ).toBeInTheDocument();
       });
     });
@@ -104,157 +149,94 @@ describe("HealthDashboard", () => {
 
   describe("system overview", () => {
     beforeEach(() => {
-      vi.mocked(healthApi.healthApi.getAllServices).mockResolvedValue([]);
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
     });
 
-    it("should display overall status", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
+    it("should display overall status section", async () => {
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
         expect(screen.getByText("Overall Status")).toBeInTheDocument();
-        expect(screen.getByText("healthy")).toBeInTheDocument();
       });
     });
 
-    it("should display total services count", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
+    it("should display status as healthy", async () => {
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText("Total Services")).toBeInTheDocument();
-        expect(screen.getByText("6")).toBeInTheDocument();
+        expect(screen.getByText(/System is currently healthy/i)).toBeInTheDocument();
       });
     });
 
-    it("should display service breakdown", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
+    it("should display services section header", async () => {
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText("4 healthy")).toBeInTheDocument();
-        expect(screen.getByText("1 degraded")).toBeInTheDocument();
-        expect(screen.getByText("1 down")).toBeInTheDocument();
+        expect(screen.getByText("Services")).toBeInTheDocument();
       });
     });
 
-    it("should display average latency", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
+    it("should display service cards when services exist", async () => {
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText("Avg Latency")).toBeInTheDocument();
-        expect(screen.getByText("52")).toBeInTheDocument();
-        expect(screen.getByText("ms")).toBeInTheDocument();
-      });
-    });
-
-    it("should display average uptime", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
-
-      renderWithProviders(<HealthDashboard />, { queryClient });
-
-      await waitFor(() => {
-        expect(screen.getByText("Avg Uptime")).toBeInTheDocument();
-        expect(screen.getByText("98.5")).toBeInTheDocument();
-        expect(screen.getByText("%")).toBeInTheDocument();
+        expect(screen.getByText("API Gateway")).toBeInTheDocument();
+        expect(screen.getByText("Database")).toBeInTheDocument();
+        expect(screen.getByText("Cache")).toBeInTheDocument();
       });
     });
 
     it("should display last updated time", async () => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText("Last Updated")).toBeInTheDocument();
+        expect(screen.getByText(/Last updated:/i)).toBeInTheDocument();
+      });
+    });
+
+    it("should display auto-refresh toggle", async () => {
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
+
+      renderWithProviders(<HealthDashboard />, { queryClient });
+
+      await waitFor(() => {
+        expect(screen.getByText("Auto Refresh")).toBeInTheDocument();
       });
     });
   });
 
-  describe("performance descriptions", () => {
+  describe("export functionality", () => {
     beforeEach(() => {
-      vi.mocked(healthApi.healthApi.getAllServices).mockResolvedValue([]);
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
     });
 
-    it("should show excellent performance for low latency", async () => {
-      const excellentHealth = { ...mockSystemHealth, averageLatency: 45 };
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        excellentHealth
-      );
+    it("should display export button", async () => {
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText("Excellent performance")).toBeInTheDocument();
-      });
-    });
-
-    it("should show good performance for moderate latency", async () => {
-      const goodHealth = { ...mockSystemHealth, averageLatency: 75 };
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        goodHealth
-      );
-
-      renderWithProviders(<HealthDashboard />, { queryClient });
-
-      await waitFor(() => {
-        expect(screen.getByText("Good performance")).toBeInTheDocument();
-      });
-    });
-
-    it("should show exceptional reliability for high uptime", async () => {
-      const highUptime = { ...mockSystemHealth, averageUptime: 99.95 };
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        highUptime
-      );
-
-      renderWithProviders(<HealthDashboard />, { queryClient });
-
-      await waitFor(() => {
-        expect(screen.getByText("Exceptional reliability")).toBeInTheDocument();
-      });
-    });
-
-    it("should show high reliability for good uptime", async () => {
-      const goodUptime = { ...mockSystemHealth, averageUptime: 99.5 };
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        goodUptime
-      );
-
-      renderWithProviders(<HealthDashboard />, { queryClient });
-
-      await waitFor(() => {
-        expect(screen.getByText("High reliability")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: /export/i })
+        ).toBeInTheDocument();
       });
     });
   });
 
   describe("interactions", () => {
     beforeEach(() => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
-      vi.mocked(healthApi.healthApi.getAllServices).mockResolvedValue([]);
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
     });
 
     it("should refresh data when refresh button is clicked", async () => {
@@ -263,7 +245,7 @@ describe("HealthDashboard", () => {
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText("System Health")).toBeInTheDocument();
+        expect(screen.getByText("System Health Status")).toBeInTheDocument();
       });
 
       const refreshButton = screen.getByRole("button", { name: /refresh/i });
@@ -271,76 +253,134 @@ describe("HealthDashboard", () => {
 
       // API should be called again
       await waitFor(() => {
-        expect(healthApi.healthApi.getSystemHealth).toHaveBeenCalledTimes(2);
+        expect(healthApi.getSystemHealth).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("should toggle auto-refresh when switch is clicked", async () => {
+      const user = userEvent.setup();
+
+      renderWithProviders(<HealthDashboard />, { queryClient });
+
+      await waitFor(() => {
+        expect(screen.getByText("Auto Refresh")).toBeInTheDocument();
+      });
+
+      const toggle = screen.getByRole("switch", { name: /auto-refresh/i });
+      await user.click(toggle);
+
+      await waitFor(() => {
+        expect(toggle).toBeChecked();
       });
     });
   });
 
-  describe("layout", () => {
+  describe("incidents timeline", () => {
     beforeEach(() => {
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        mockSystemHealth
-      );
-      vi.mocked(healthApi.healthApi.getAllServices).mockResolvedValue([]);
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(mockSystemHealth);
     });
 
-    it("should render service list", async () => {
+    it("should render incident timeline component", async () => {
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(mockIncidents);
+
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        // ServiceList component renders search input
-        expect(
-          screen.getByPlaceholderText("Search services...")
-        ).toBeInTheDocument();
+        // IncidentTimeline renders the incidents
+        expect(screen.getByText("Database slowdown")).toBeInTheDocument();
       });
     });
 
-    it("should render incidents sidebar", async () => {
+    it("should handle empty incidents", async () => {
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
+
       renderWithProviders(<HealthDashboard />, { queryClient });
 
+      // Should not crash with empty incidents
       await waitFor(() => {
-        expect(screen.getByText("Recent Incidents")).toBeInTheDocument();
+        expect(screen.getByText("System Health Status")).toBeInTheDocument();
       });
     });
   });
 
   describe("status variants", () => {
     beforeEach(() => {
-      vi.mocked(healthApi.healthApi.getAllServices).mockResolvedValue([]);
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
     });
 
     it("should display degraded overall status", async () => {
-      const degradedHealth = {
+      const degradedHealth: SystemHealth = {
         ...mockSystemHealth,
-        overallStatus: "degraded" as const,
+        status: "degraded",
+        overallStatus: "degraded",
       };
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        degradedHealth
-      );
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(degradedHealth);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText("degraded")).toBeInTheDocument();
+        expect(screen.getByText(/System is currently degraded/i)).toBeInTheDocument();
       });
     });
 
     it("should display down overall status", async () => {
-      const downHealth = {
+      const downHealth: SystemHealth = {
         ...mockSystemHealth,
-        overallStatus: "down" as const,
+        status: "down",
+        overallStatus: "down",
       };
-      vi.mocked(healthApi.healthApi.getSystemHealth).mockResolvedValue(
-        downHealth
-      );
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(downHealth);
 
       renderWithProviders(<HealthDashboard />, { queryClient });
 
       await waitFor(() => {
-        expect(screen.getByText("down")).toBeInTheDocument();
+        expect(screen.getByText(/System is currently down/i)).toBeInTheDocument();
       });
+    });
+  });
+
+  describe("dependencies section", () => {
+    beforeEach(() => {
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
+    });
+
+    it("should display dependencies when present", async () => {
+      const healthWithDependencies: SystemHealth = {
+        ...mockSystemHealth,
+        dependencies: [
+          {
+            name: "External API",
+            type: "external",
+            status: "healthy",
+            lastCheck: new Date().toISOString(),
+          },
+        ],
+      };
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(healthWithDependencies);
+
+      renderWithProviders(<HealthDashboard />, { queryClient });
+
+      await waitFor(() => {
+        expect(screen.getByText("Dependencies")).toBeInTheDocument();
+        expect(screen.getByText("External API")).toBeInTheDocument();
+      });
+    });
+
+    it("should not display dependencies section when empty", async () => {
+      const healthWithoutDependencies: SystemHealth = {
+        ...mockSystemHealth,
+        dependencies: [],
+      };
+      vi.mocked(healthApi.getSystemHealth).mockResolvedValue(healthWithoutDependencies);
+
+      renderWithProviders(<HealthDashboard />, { queryClient });
+
+      await waitFor(() => {
+        expect(screen.getByText("Services")).toBeInTheDocument();
+      });
+
+      // Dependencies section should not be present
+      expect(screen.queryByText("Dependencies")).not.toBeInTheDocument();
     });
   });
 });

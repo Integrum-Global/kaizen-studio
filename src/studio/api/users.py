@@ -60,6 +60,21 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class UserLevelResponse(BaseModel):
+    """User level response for EATP ontology."""
+
+    level: int  # 1, 2, or 3
+    permissions: dict
+
+
+class DelegateeResponse(BaseModel):
+    """Delegatee response for user selection."""
+
+    id: str
+    name: str
+    level: int
+
+
 class CreateUserRequest(BaseModel):
     """Create user request."""
 
@@ -130,6 +145,7 @@ async def create_user(
 
 @router.get("", response_model=UserListResponse)
 async def list_users(
+    search: str | None = Query(None, description="Search by name or email"),
     status: str | None = Query(None, description="Filter by status"),
     role: str | None = Query(None, description="Filter by role"),
     limit: int = Query(50, ge=1, le=100),
@@ -152,9 +168,19 @@ async def list_users(
         offset=offset,
     )
 
+    # Apply search filter if provided
+    records = result["records"]
+    if search:
+        search_lower = search.lower()
+        records = [
+            r for r in records
+            if search_lower in r.get("name", "").lower()
+            or search_lower in r.get("email", "").lower()
+        ]
+
     return UserListResponse(
-        records=[UserResponse(**r) for r in result["records"]],
-        total=result["total"],
+        records=[UserResponse(**r) for r in records],
+        total=len(records) if search else result["total"],
     )
 
 
@@ -299,3 +325,97 @@ async def delete_user(
 
     await user_service.delete_user(user_id)
     return MessageResponse(message="User deleted successfully")
+
+
+def _get_level_for_role(role: str) -> int:
+    """
+    Map user role to EATP level.
+
+    Level 1: Task performers (viewer, developer)
+    Level 2: Process owners (org_admin)
+    Level 3: Value chain owners (org_owner)
+    """
+    level_map = {
+        "viewer": 1,
+        "developer": 1,
+        "org_admin": 2,
+        "org_owner": 3,
+    }
+    return level_map.get(role, 1)
+
+
+def _get_permissions_for_level(level: int) -> dict:
+    """Get permissions for a given EATP level."""
+    return {
+        "canRun": level >= 1,
+        "canConfigure": level >= 2,
+        "canDelegate": level >= 2,
+        "canCreateWorkUnits": level >= 2,
+        "canManageWorkspaces": level >= 2,
+        "canViewValueChains": level >= 3,
+        "canAccessCompliance": level >= 3,
+        "canEstablishTrust": level >= 3,
+        "canDelete": level >= 3,
+    }
+
+
+@router.get("/delegatees", response_model=list[DelegateeResponse])
+async def list_delegatees(
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    List users available for delegation.
+    Returns users in the same organization that can be delegated to.
+    """
+    result = await user_service.list_users(
+        organization_id=current_user["organization_id"],
+        filters={"status": "active"},
+        limit=100,
+        offset=0,
+    )
+
+    delegatees = []
+    for user in result.get("records", []):
+        # Skip current user
+        if user["id"] == current_user["id"]:
+            continue
+        delegatees.append(
+            DelegateeResponse(
+                id=user["id"],
+                name=user.get("name", user["email"]),
+                level=_get_level_for_role(user.get("role", "viewer")),
+            )
+        )
+
+    return delegatees
+
+
+@router.get("/{user_id}/level", response_model=UserLevelResponse)
+async def get_user_level(
+    user_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Get the EATP level for a user.
+    Level determines what features and permissions are available.
+    """
+    user = await user_service.get_user(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Check authorization - same organization
+    if user["organization_id"] != current_user["organization_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this user",
+        )
+
+    level = _get_level_for_role(user.get("role", "viewer"))
+
+    return UserLevelResponse(
+        level=level,
+        permissions=_get_permissions_for_level(level),
+    )

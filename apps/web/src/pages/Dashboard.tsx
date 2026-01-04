@@ -15,8 +15,8 @@ import { useBreakpoint } from "../hooks";
 import {
   Plus,
   RefreshCw,
-  Users,
-  GitBranch,
+  Boxes,
+  Workflow,
   Server,
   Activity,
   Clock,
@@ -38,8 +38,8 @@ export function Dashboard() {
 
   // Mock stats - in a real app these would come from an API
   const [stats, setStats] = useState({
-    activeAgents: 0,
-    runningPipelines: 0,
+    activeWorkUnits: 0,
+    activeProcesses: 0,
     deployments: 0,
   });
 
@@ -92,9 +92,11 @@ export function Dashboard() {
   const getActivityIcon = (type: string) => {
     switch (type) {
       case "agent":
-        return Users;
+      case "work-unit":
+        return Boxes;
       case "pipeline":
-        return GitBranch;
+      case "process":
+        return Workflow;
       case "deployment":
         return Server;
       default:
@@ -123,15 +125,15 @@ export function Dashboard() {
         {/* Quick Action Buttons */}
         <div className="flex gap-2">
           <Button asChild>
-            <Link to="/agents/new">
+            <Link to="/build/work-units/new">
               <Plus className="mr-2 h-4 w-4" />
-              New Agent
+              New Work Unit
             </Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link to="/pipelines/new">
+            <Link to="/build/workspaces/new">
               <Plus className="mr-2 h-4 w-4" />
-              New Pipeline
+              New Workspace
             </Link>
           </Button>
         </div>
@@ -190,17 +192,17 @@ export function Dashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Active Agents</span>
+                  <Boxes className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Active Work Units</span>
                 </div>
-                <Badge>{stats.activeAgents}</Badge>
+                <Badge>{stats.activeWorkUnits}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <GitBranch className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Running Pipelines</span>
+                  <Workflow className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Active Processes</span>
                 </div>
-                <Badge>{stats.runningPipelines}</Badge>
+                <Badge>{stats.activeProcesses}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

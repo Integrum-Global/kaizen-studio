@@ -7,3 +7,9 @@ export { useFocusTrap } from "./useFocusTrap";
 export { useReducedMotion } from "./useReducedMotion";
 export { useAriaDescribedBy } from "./useAriaDescribedBy";
 export { useTheme } from "./useTheme";
+export { useLevelTransition } from "./useLevelTransition";
+export type {
+  LevelTransition,
+  UseLevelTransitionOptions,
+  UseLevelTransitionResult,
+} from "./useLevelTransition";

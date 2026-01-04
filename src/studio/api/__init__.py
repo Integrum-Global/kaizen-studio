@@ -31,6 +31,10 @@ from studio.api.test import router as test_router
 from studio.api.trust import router as trust_router
 from studio.api.users import router as users_router
 from studio.api.webhooks import router as webhooks_router
+from studio.api.work_units import router as work_units_router
+from studio.api.workspaces import router as workspaces_router
+from studio.api.activity import router as activity_router
+from studio.api.runs import router as runs_router
 
 __all__ = [
     "agent_execute_router",
@@ -60,4 +64,8 @@ __all__ = [
     "external_agents_router",
     "lineage_router",
     "trust_router",
+    "work_units_router",
+    "workspaces_router",
+    "activity_router",
+    "runs_router",
 ]

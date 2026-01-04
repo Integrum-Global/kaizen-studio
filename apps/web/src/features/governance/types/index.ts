@@ -17,4 +17,9 @@ export type {
   CreateRoleRequest,
   CreatePolicyRequest,
   AvailablePermissions,
+  ReferenceStatus,
+  ResourceReferenceStatus,
+  ConditionValidationResult,
+  ValidateConditionsRequest,
+  PolicyReferencesResponse,
 } from "./governance";

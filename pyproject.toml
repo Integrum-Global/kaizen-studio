@@ -25,8 +25,8 @@ dependencies = [
     # Kailash SDK & Frameworks
     "kailash>=0.10.13",
     "kailash-nexus>=1.1.2",
-    "kailash-dataflow>=0.10.5",
-    "kailash-kaizen>=0.8.1",
+    "kailash-dataflow>=0.10.7",
+    "kailash-kaizen>=0.8.2",
 
     # Core Framework
     "fastapi>=0.104.0",

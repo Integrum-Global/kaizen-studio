@@ -41,6 +41,10 @@ from studio.api import (
     trust_router,
     users_router,
     webhooks_router,
+    work_units_router,
+    workspaces_router,
+    activity_router,
+    runs_router,
 )
 from studio.config import get_settings
 from studio.middleware.audit_middleware import AuditMiddleware
@@ -225,6 +229,10 @@ def create_app() -> FastAPI:
     app.include_router(settings_router, prefix=settings.api_prefix)
     app.include_router(executions_router, prefix=settings.api_prefix)
     app.include_router(trust_router, prefix=settings.api_prefix)
+    app.include_router(work_units_router, prefix=settings.api_prefix)
+    app.include_router(workspaces_router, prefix=settings.api_prefix)
+    app.include_router(activity_router, prefix=settings.api_prefix)
+    app.include_router(runs_router, prefix=settings.api_prefix)
 
     return app
 

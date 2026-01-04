@@ -7,6 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,12 +29,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertTriangle } from "lucide-react";
 import {
   useCreatePolicy,
   useUpdatePolicy,
   useAvailablePermissions,
 } from "../hooks";
+import { useValidateConditions } from "../hooks/usePolicyReferences";
 import { ConditionsSection } from "./conditions";
 import type { PolicyCondition, ConditionGroup } from "./conditions/types";
 import type {
@@ -33,6 +44,7 @@ import type {
   ResourceType,
   ActionType,
   PolicyEffect,
+  ResourceReferenceStatus,
 } from "../types";
 
 interface PolicyEditorProps {
@@ -78,12 +90,22 @@ export function PolicyEditor({
   });
   const [priority, setPriority] = useState(50);
 
+  // Reference validation state
+  const [showReferenceWarning, setShowReferenceWarning] = useState(false);
+  const [referenceIssues, setReferenceIssues] = useState<
+    ResourceReferenceStatus[]
+  >([]);
+
   const { data: availablePermissions } = useAvailablePermissions();
   const createPolicy = useCreatePolicy();
   const updatePolicy = useUpdatePolicy();
+  const validateConditionsMutation = useValidateConditions();
 
   const isEditing = !!policy;
-  const isPending = createPolicy.isPending || updatePolicy.isPending;
+  const isPending =
+    createPolicy.isPending ||
+    updatePolicy.isPending ||
+    validateConditionsMutation.isPending;
 
   const availableActions =
     availablePermissions?.find((p) => p.resource === resource)?.actions || [];
@@ -135,17 +157,22 @@ export function PolicyEditor({
     setConditionGroup(group);
   }, []);
 
-  const handleSubmit = async () => {
-    // Convert new condition format to API format
-    // The API expects simple values (string | string[] | number | boolean)
-    const apiConditions = conditionGroup.conditions
+  /**
+   * Convert conditions to API format
+   */
+  const getApiConditions = useCallback(() => {
+    return conditionGroup.conditions
       .filter((c) => c.attribute && c.value !== "")
       .map((c) => {
         // Convert complex values to API-compatible format
         let apiValue: string | string[] | number | boolean = "";
         const val = c.value;
 
-        if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+        if (
+          typeof val === "string" ||
+          typeof val === "number" ||
+          typeof val === "boolean"
+        ) {
           apiValue = val;
         } else if (Array.isArray(val)) {
           // Handle string[] or number[] - convert to string[]
@@ -162,6 +189,13 @@ export function PolicyEditor({
           value: apiValue,
         };
       });
+  }, [conditionGroup.conditions]);
+
+  /**
+   * Perform the actual save operation
+   */
+  const performSave = async () => {
+    const apiConditions = getApiConditions();
 
     const request: CreatePolicyRequest = {
       name,
@@ -186,6 +220,60 @@ export function PolicyEditor({
     }
   };
 
+  /**
+   * Handle submit with validation
+   */
+  const handleSubmit = async () => {
+    const apiConditions = getApiConditions();
+
+    // Skip validation if no conditions
+    if (apiConditions.length === 0) {
+      await performSave();
+      return;
+    }
+
+    // Validate conditions before saving
+    try {
+      const result = await validateConditionsMutation.mutateAsync({
+        conditions: apiConditions,
+      });
+
+      // Check for orphaned or changed references
+      const issues = result.references.filter(
+        (ref) => ref.status === "orphaned" || ref.status === "changed"
+      );
+
+      if (issues.length > 0) {
+        // Show warning dialog
+        setReferenceIssues(issues);
+        setShowReferenceWarning(true);
+      } else {
+        // No issues, proceed with save
+        await performSave();
+      }
+    } catch (error) {
+      console.warn("Validation failed, proceeding with save:", error);
+      // If validation fails (e.g., endpoint not available), proceed with save
+      await performSave();
+    }
+  };
+
+  /**
+   * Handle confirmation to save despite warnings
+   */
+  const handleConfirmSave = async () => {
+    setShowReferenceWarning(false);
+    await performSave();
+  };
+
+  /**
+   * Handle cancellation of save due to warnings
+   */
+  const handleCancelSave = () => {
+    setShowReferenceWarning(false);
+    setReferenceIssues([]);
+  };
+
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       setName("");
@@ -195,8 +283,28 @@ export function PolicyEditor({
       setSelectedActions(new Set());
       setConditionGroup({ logic: "all", conditions: [] });
       setPriority(50);
+      // Reset reference validation state
+      setShowReferenceWarning(false);
+      setReferenceIssues([]);
     }
     onOpenChange(newOpen);
+  };
+
+  /**
+   * Get human-readable type label
+   */
+  const getTypeLabel = (type: string): string => {
+    const labels: Record<string, string> = {
+      agent: "Work Unit",
+      pipeline: "Process",
+      deployment: "Deployment",
+      gateway: "Gateway",
+      team: "Team",
+      user: "User",
+      role: "Role",
+      resource: "Resource",
+    };
+    return labels[type] || type;
   };
 
   return (
@@ -314,6 +422,7 @@ export function PolicyEditor({
             initialConditions={conditionGroup.conditions}
             initialLogic={conditionGroup.logic}
             onChange={handleConditionGroupChange}
+            policyId={policy?.id}
           />
         </div>
 
@@ -330,6 +439,64 @@ export function PolicyEditor({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Reference Warning Dialog */}
+      <AlertDialog open={showReferenceWarning} onOpenChange={setShowReferenceWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Resource Reference Issues Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  This policy references resources that may no longer be valid.
+                  The policy may not work as expected.
+                </p>
+                <div className="bg-muted p-3 rounded-lg">
+                  <p className="font-medium text-sm mb-2">Affected resources:</p>
+                  <ul className="space-y-1 text-sm">
+                    {referenceIssues.map((ref) => (
+                      <li
+                        key={`${ref.type}-${ref.id}`}
+                        className="flex items-center gap-2"
+                      >
+                        <span className="font-medium">
+                          {getTypeLabel(ref.type)}:
+                        </span>
+                        <span className="font-mono text-xs">
+                          {ref.name || ref.id}
+                        </span>
+                        <span
+                          className={
+                            ref.status === "orphaned"
+                              ? "text-destructive text-xs"
+                              : "text-yellow-600 dark:text-yellow-400 text-xs"
+                          }
+                        >
+                          ({ref.status === "orphaned" ? "Deleted" : "Modified"})
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <p className="text-sm">
+                  Do you want to save the policy anyway?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelSave}>
+              Go Back & Fix
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSave}>
+              Save Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

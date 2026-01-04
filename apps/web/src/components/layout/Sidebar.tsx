@@ -4,6 +4,7 @@ import {
   Users,
   Workflow,
   Box,
+  Boxes,
   Server,
   Shield,
   BarChart,
@@ -11,7 +12,7 @@ import {
   Key,
   Webhook,
   FileText,
-  GitBranch,
+  FolderKanban,
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
@@ -40,8 +41,8 @@ const navSections: NavSection[] = [
   {
     title: "BUILD",
     items: [
-      { label: "Agents", href: "/agents", icon: Users },
-      { label: "Pipelines", href: "/pipelines", icon: GitBranch },
+      { label: "Work Units", href: "/build/work-units", icon: Boxes },
+      { label: "Workspaces", href: "/build/workspaces", icon: FolderKanban },
       { label: "Connectors", href: "/connectors", icon: Box },
     ],
   },

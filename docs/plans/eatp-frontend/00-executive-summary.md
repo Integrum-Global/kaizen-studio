@@ -1,191 +1,267 @@
 # EATP Frontend Implementation Plan: Executive Summary
 
 ## Document Control
-- **Version**: 1.0
-- **Date**: 2025-12-15
-- **Status**: Planning
+- **Version**: 2.0
+- **Date**: 2026-01-03
+- **Status**: Planning (Updated)
 - **Author**: Kaizen Studio Team
 
 ---
 
 ## Purpose
 
-This document series outlines the frontend implementation plan for the Enterprise Agent Trust Protocol (EATP) within Kaizen Studio. The UI components will provide visual trust management, audit trails, and enterprise trust fabric configuration.
+This document series outlines the frontend implementation plan for integrating the Enterprise Agent Trust Protocol (EATP) into Kaizen Studio using the **new ontology framework**.
+
+The implementation is guided by:
+- **EATP Ontology** (`docs/plans/eatp-ontology/`) - Conceptual framework
+- **Agentic Enterprise Whitepaper** - Client requirements and architecture
+- **EATP Fundamentals** (`docs/plans/eatp-integration/`) - Protocol specifications
+
+---
+
+## Key Changes from v1.0
+
+### Ontology-Driven Redesign
+
+| Previous Approach | New Approach |
+|------------------|--------------|
+| Separate "Agents" and "Pipelines" pages | Unified "Work Units" page |
+| Trust as isolated GOVERN section | Trust integrated into all views |
+| Same UI for all users | Level-based adaptive UI |
+| Folder-based organization | Workspace-based collections |
+| Technical terminology | User-friendly terminology |
+
+### New Conceptual Model
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     NEW FRONTEND MODEL                              │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   WORK UNIT (Unified Concept)                                       │
+│   ─────────────────────────                                         │
+│   • Replaces "Agent" and "Pipeline" terminology                     │
+│   • Two types: Atomic (single) and Composite (orchestration)        │
+│   • Same card design, subtle type indicators                        │
+│   • Trust integrated at the card level                              │
+│                                                                     │
+│   THREE-LEVEL USER EXPERIENCE                                       │
+│   ───────────────────────────                                       │
+│   • Level 1 (Task Performer): Simplified task view                  │
+│   • Level 2 (Process Owner): Process management + delegation        │
+│   • Level 3 (Value Chain Owner): Enterprise + compliance            │
+│                                                                     │
+│   WORKSPACES                                                        │
+│   ──────────                                                        │
+│   • Purpose-driven collections (not folders)                        │
+│   • Cross-department capable                                        │
+│   • Define delegation scope                                         │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Overview
 
 The EATP frontend provides:
-1. **Trust Visualization**: Visual representation of trust chains and delegations
-2. **Trust Management**: UI for establishing, delegating, and revoking trust
-3. **Audit Dashboard**: Real-time and historical audit trail visualization
-4. **ESA Configuration**: Enterprise System Agent setup and monitoring
-5. **Pipeline Trust Integration**: Trust-aware pipeline editor enhancements
+
+1. **Work Unit Management**: Create, configure, and manage work units (replacing agents/pipelines)
+2. **Level-Based Experience**: Adaptive UI based on user trust posture
+3. **Trust-Aware Components**: Trust status visible throughout the UI
+4. **Workspace Management**: Purpose-driven collections with delegation
+5. **Delegation Flows**: Visual, intuitive trust delegation
+6. **Audit Dashboard**: Compliance and activity tracking
+
+---
+
+## Navigation Architecture
+
+### Revised Sidebar Structure
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                                                                      │
+│   WORK                           ← User-centric section              │
+│   ├── My Tasks                   ← Level 1+: Run tasks               │
+│   ├── My Processes               ← Level 2+: Manage processes        │
+│   └── Value Chains               ← Level 3: Enterprise view          │
+│                                                                      │
+│   BUILD                          ← Creator-centric section           │
+│   ├── Work Units                 ← Unified agents + pipelines        │
+│   ├── Workspaces                 ← Purpose-driven collections        │
+│   └── Connectors                 ← ESAs and integrations             │
+│                                                                      │
+│   GOVERN                         ← Trust and compliance              │
+│   ├── Trust                      ← Delegation management             │
+│   ├── Compliance                 ← Audit and constraints             │
+│   └── Activity                   ← Execution history                 │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### Level-Based Adaptation
+
+| Section | Level 1 | Level 2 | Level 3 |
+|---------|---------|---------|---------|
+| WORK > My Tasks | ✓ | ✓ | ✓ |
+| WORK > My Processes | - | ✓ | ✓ |
+| WORK > Value Chains | - | - | ✓ |
+| BUILD | - | ✓ | ✓ |
+| GOVERN > My Delegations | - | ✓ | - |
+| GOVERN (full) | - | - | ✓ |
+| ADMIN | - | - | ✓ |
 
 ---
 
 ## Key UI Components
 
-### 1. Trust Dashboard
-Central hub for trust management and monitoring.
+### 1. Work Unit Card (Unified Design)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Trust Dashboard                                                 │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
-│  │  Agents      │  │  Active      │  │  Audit       │          │
-│  │  12 trusted  │  │  Delegations │  │  Events      │          │
-│  │  3 pending   │  │  47 active   │  │  1,234 today │          │
-│  └──────────────┘  └──────────────┘  └──────────────┘          │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Trust Chain Visualization                                │  │
-│  │  [Interactive Graph]                                      │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │  Recent Audit Events                                      │  │
-│  │  [Streaming Event List]                                   │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                     WORK UNIT CARD                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   ┌─────────────────────────────────────────────────────────────┐  │
+│   │                                                              │  │
+│   │   ┌──────────┐   Invoice Processor                          │  │
+│   │   │   ◉◉◉    │   Processes and validates invoices           │  │
+│   │   │ (type)   │                                               │  │
+│   │   └──────────┘                                               │  │
+│   │                                                              │  │
+│   │   ┌─────────────────────────────────────────────────────┐   │  │
+│   │   │ Capabilities: extract, validate, route, archive     │   │  │
+│   │   └─────────────────────────────────────────────────────┘   │  │
+│   │                                                              │  │
+│   │   ┌────────────────┐  ┌────────────────┐                    │  │
+│   │   │ ✓ Trust Valid  │  │ Uses: 4 units  │ ← Composite only   │  │
+│   │   └────────────────┘  └────────────────┘                    │  │
+│   │                                                              │  │
+│   │   [Run]  [Configure]  [Delegate]                             │  │
+│   │                                                              │  │
+│   └─────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│   Visual Differentiation:                                           │
+│   • Atomic: Single icon (◉), no "Uses" badge                       │
+│   • Composite: Stacked icon (◉◉◉), shows sub-unit count            │
+│   • Trust status always visible                                     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Agent Trust Management
-Manage individual agent trust chains.
+### 2. My Tasks View (Level 1 Primary)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Agent: data-analyst-001                                         │
-├─────────────────────────────────────────────────────────────────┤
-│  Trust Status: ● Verified                                        │
-│                                                                  │
-│  Genesis Record                                                  │
-│  ├─ Authority: ACME Corp (org-acme)                             │
-│  ├─ Created: 2025-12-15 10:00:00                                │
-│  ├─ Expires: 2026-12-15 10:00:00                                │
-│  └─ Signature: ✓ Valid                                          │
-│                                                                  │
-│  Capabilities (3)                                                │
-│  ├─ analyze_financial_data [read_only, no_pii]                  │
-│  ├─ generate_reports [internal_only]                            │
-│  └─ query_database [audit_required]                             │
-│                                                                  │
-│  Active Delegations (2)                                          │
-│  ├─ From: supervisor-001 → Task: Q4 Analysis                    │
-│  └─ From: router-001 → Task: Data Pipeline                      │
-│                                                                  │
-│  [Revoke Trust] [Add Capability] [View Audit Log]               │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                     MY TASKS                                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   Available Tasks                                 [Search...]       │
+│                                                                     │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐               │
+│   │ 📝 Summarize│  │ 📊 Extract  │  │ 🌐 Translate│               │
+│   │   Document  │  │    Data     │  │   Content   │               │
+│   │             │  │             │  │             │               │
+│   │ [Run Now]   │  │ [Run Now]   │  │ [Run Now]   │               │
+│   └─────────────┘  └─────────────┘  └─────────────┘               │
+│                                                                     │
+│   Recent Results                                                    │
+│   ┌─────────────────────────────────────────────────────────────┐  │
+│   │ ✓ Summarize Document • 2 min ago           [View Result]    │  │
+│   │ ✓ Extract Data • 15 min ago                [View Result]    │  │
+│   │ ⏳ Translate Content • Running...           [View Status]    │  │
+│   └─────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│   Focus: Simple, action-oriented, results-focused                   │
+│   Hidden: Orchestration details, sub-units, technical config        │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 3. Delegation Flow
-Visual delegation management.
+### 3. My Processes View (Level 2 Primary)
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Create Delegation                                               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  From:    [supervisor-001        ▼]                             │
-│                                                                  │
-│  To:      [worker-001            ▼]                             │
-│                                                                  │
-│  Task:    [Q4 Financial Analysis    ]                           │
-│                                                                  │
-│  Capabilities to Delegate:                                       │
-│  ☑ analyze_financial_data                                       │
-│  ☐ generate_reports                                             │
-│  ☐ query_database                                               │
-│                                                                  │
-│  Additional Constraints:                                         │
-│  [+ Add Constraint]                                             │
-│  ┌──────────────────────────────────────┐                       │
-│  │ ☑ q4_data_only                       │                       │
-│  │ ☑ summary_output                     │                       │
-│  │ ☐ time_limited (8 hours)             │                       │
-│  └──────────────────────────────────────┘                       │
-│                                                                  │
-│  Expires: [2025-12-15 18:00 ▼]                                  │
-│                                                                  │
-│  [Cancel]                              [Create Delegation]       │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                     MY PROCESSES                                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   Team Processes                     [+ New Process] [Search...]    │
+│                                                                     │
+│   ┌─────────────────────────────────────────────────────────────┐  │
+│   │                                                              │  │
+│   │   📊 Invoice Processing                                      │  │
+│   │   ────────────────────                                       │  │
+│   │                                                              │  │
+│   │   ┌────────┐ → ┌────────┐ → ┌────────┐ → ┌────────┐         │  │
+│   │   │Extract │   │Validate│   │ Route  │   │Archive │         │  │
+│   │   └────────┘   └────────┘   └────────┘   └────────┘         │  │
+│   │                                                              │  │
+│   │   Trust: ✓ Valid from CFO    │  Team: 5 members              │  │
+│   │   Runs today: 47             │  Status: ● Active             │  │
+│   │                                                              │  │
+│   │   [Configure]  [Delegate]  [View Runs]  [Audit]              │  │
+│   │                                                              │  │
+│   └─────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│   Focus: Process orchestration, team delegation, activity           │
+│   Visible: Flow diagram, delegation info, team activity             │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4. Audit Trail Viewer
-Comprehensive audit log exploration.
+### 4. Workspace Detail
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Audit Trail                                [🔍 Search] [Filter]│
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  Filters: Agent [All ▼] Action [All ▼] Result [All ▼]          │
-│           Time: [Last 24 hours ▼]                               │
-│                                                                  │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │ 10:35:00 | worker-001 | query_transactions | ✓ SUCCESS    │ │
-│  │          | Resource: finance_db.transactions               │ │
-│  │          | Trust Chain: abc123... | Parent: aud-004        │ │
-│  ├────────────────────────────────────────────────────────────┤ │
-│  │ 10:34:55 | worker-001 | analyze_data | ✓ SUCCESS          │ │
-│  │          | Resource: q4_dataset                            │ │
-│  │          | Trust Chain: abc123... | Parent: aud-003        │ │
-│  ├────────────────────────────────────────────────────────────┤ │
-│  │ 10:30:01 | supervisor-001 | delegate_task | ✓ SUCCESS     │ │
-│  │          | To: worker-001 | Capabilities: analyze_data     │ │
-│  │          | Trust Chain: def456... | Parent: null           │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                  │
-│  [Export CSV] [Generate Compliance Report]                       │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 5. Trust Chain Visualizer
-Interactive graph of trust relationships.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Trust Chain Visualization                     [Zoom] [Export]  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│     ┌─────────────┐                                             │
-│     │  Authority  │                                             │
-│     │  ACME Corp  │                                             │
-│     └──────┬──────┘                                             │
-│            │ ESTABLISH                                           │
-│     ┌──────┴──────┐                                             │
-│     │ Supervisor  │                                             │
-│     │ agent-001   │                                             │
-│     └──────┬──────┘                                             │
-│            │ DELEGATE                                            │
-│     ┌──────┼──────┐                                             │
-│     │      │      │                                             │
-│  ┌──▼──┐ ┌─▼──┐ ┌─▼──┐                                         │
-│  │W-01 │ │W-02│ │W-03│                                         │
-│  └─────┘ └────┘ └────┘                                         │
-│                                                                  │
-│  Legend: ● Trusted  ◐ Pending  ○ Expired                        │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                     WORKSPACE: Q4 AUDIT PREP                        │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│   Q4 Audit Prep                                   [Edit] [Archive]  │
+│   Cross-functional workspace for Q4 audit preparation               │
+│   Expires: December 31, 2026  │  12 work units  │  5 members       │
+│                                                                     │
+│   Work Units                                          [+ Add Unit]  │
+│   ┌─────────────────────────────────────────────────────────────┐  │
+│   │ Finance                                                      │  │
+│   │ ├── 📊 Financial Report Generator                           │  │
+│   │ └── 📈 Revenue Analyzer                                     │  │
+│   │                                                              │  │
+│   │ Legal                                                        │  │
+│   │ └── 📝 Contract Reviewer                                    │  │
+│   │                                                              │  │
+│   │ Compliance                                                   │  │
+│   │ └── 🔍 Audit Trail Analyzer                                 │  │
+│   └─────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+│   Members                                       [+ Invite Member]   │
+│   ┌─────────────────────────────────────────────────────────────┐  │
+│   │ 👤 Alice Chen (Owner)      Finance      Full Access         │  │
+│   │ 👤 Bob Smith               Legal        Run Only            │  │
+│   │ 👤 Carol Johnson          Compliance    Run Only            │  │
+│   └─────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Feature Mapping
 
-| EATP Backend Feature | Frontend Component | Priority |
-|---------------------|-------------------|----------|
-| Trust Lineage Chain | TrustChainViewer | P0 |
-| ESTABLISH Operation | EstablishTrustForm | P0 |
-| DELEGATE Operation | DelegationFlow | P0 |
-| VERIFY Operation | TrustStatusBadge | P0 |
-| AUDIT Operation | AuditTrailViewer | P0 |
-| Authority Registry | AuthorityManager | P1 |
-| ESA Pattern | ESAConfigPanel | P1 |
-| A2A Integration | AgentCardPreview | P1 |
-| Trust Metrics | TrustDashboard | P2 |
+| Feature | Component | Priority | Ontology Reference |
+|---------|-----------|----------|-------------------|
+| Work Unit listing | WorkUnitList | P0 | 02-work-unit-model.md |
+| Work Unit card | WorkUnitCard | P0 | 02-work-unit-model.md |
+| Trust status badge | TrustStatusBadge | P0 | 05-eatp-mapping.md |
+| My Tasks view | MyTasksPage | P0 | 03-user-experience-levels.md |
+| My Processes view | MyProcessesPage | P0 | 03-user-experience-levels.md |
+| Value Chains view | ValueChainsPage | P1 | 03-user-experience-levels.md |
+| Workspace list | WorkspaceList | P1 | 04-workspaces.md |
+| Workspace detail | WorkspaceDetail | P1 | 04-workspaces.md |
+| Delegation wizard | DelegationWizard | P0 | 05-eatp-mapping.md |
+| Level-based sidebar | AdaptiveSidebar | P0 | 06-navigation-architecture.md |
+| Audit trail viewer | AuditTrailViewer | P1 | (existing) |
+| Trust chain graph | TrustChainGraph | P2 | (existing) |
 
 ---
 
@@ -193,42 +269,44 @@ Interactive graph of trust relationships.
 
 | File | Contents |
 |------|----------|
-| `00-executive-summary.md` | This document |
+| `00-executive-summary.md` | This document - overview and key changes |
 | `01-component-architecture.md` | React component structure |
 | `02-trust-visualization.md` | Trust chain and graph components |
-| `03-management-interfaces.md` | CRUD interfaces for trust operations |
-| `04-audit-dashboard.md` | Audit trail and compliance UI |
-| `05-pipeline-integration.md` | Trust-aware pipeline editor |
-| `06-api-integration.md` | Backend API integration |
-| `07-testing-strategy.md` | Frontend testing approach |
+| `03-work-units-ui.md` | **NEW**: Unified work unit components |
+| `04-workspaces-ui.md` | **NEW**: Workspace management UI |
+| `05-level-based-experience.md` | **NEW**: Adaptive UI implementation |
+| `06-navigation-implementation.md` | **NEW**: Sidebar and routing |
+| `07-api-integration.md` | Backend API integration |
+| `08-migration-guide.md` | **NEW**: From agents/pipelines to work units |
 
 ---
 
 ## Implementation Phases
 
-### Phase 1: Core Trust UI (2 weeks)
-- Trust Dashboard layout
-- Agent trust detail view
-- Basic trust status indicators
-- Trust chain viewer (simplified)
+### Phase 1: Foundation (Week 1-2)
+- [ ] Implement WorkUnitCard component (unified design)
+- [ ] Implement TrustStatusBadge with new states
+- [ ] Create MyTasksPage (Level 1 view)
+- [ ] Implement AdaptiveSidebar with level detection
+- [ ] Update routing structure
 
-### Phase 2: Management Interfaces (2 weeks)
-- Establish trust form
-- Delegation flow wizard
-- Capability management
-- Constraint editor
+### Phase 2: Level 2 Experience (Week 3-4)
+- [ ] Create MyProcessesPage with flow visualization
+- [ ] Implement DelegationWizard with constraint tightening
+- [ ] Build WorkspaceList and WorkspaceDetail
+- [ ] Add team activity feed
 
-### Phase 3: Audit & Visualization (2 weeks)
-- Audit trail viewer
-- Interactive trust graph
-- Compliance reports
-- Real-time updates
+### Phase 3: Level 3 Experience (Week 5-6)
+- [ ] Create ValueChainsPage
+- [ ] Implement cross-department trust visualization
+- [ ] Build ComplianceDashboard
+- [ ] Add enterprise audit trail features
 
-### Phase 4: Advanced Features (2 weeks)
-- ESA configuration panel
-- A2A Agent Card preview
-- Pipeline trust integration
-- Trust metrics dashboard
+### Phase 4: Polish & Migration (Week 7-8)
+- [ ] Complete migration from agents/pipelines terminology
+- [ ] Update all user-facing strings
+- [ ] Add progressive disclosure animations
+- [ ] Comprehensive testing across all levels
 
 ---
 
@@ -239,26 +317,49 @@ Interactive graph of trust relationships.
 | Framework | React 18+ |
 | State Management | Zustand |
 | UI Components | Shadcn/ui |
-| Graphs | React Flow |
+| Graphs/Flows | React Flow |
 | Forms | React Hook Form + Zod |
 | Data Fetching | @tanstack/react-query |
-| Styling | Tailwind CSS |
-| Testing | Vitest + Testing Library |
+| Styling | Tailwind CSS v4 |
+| Testing | Vitest + Testing Library + Playwright |
 
 ---
 
 ## Success Criteria
 
-1. **Phase 1**: Trust dashboard functional with live data
-2. **Phase 2**: All trust CRUD operations via UI
-3. **Phase 3**: Complete audit trail with search/filter
-4. **Phase 4**: Full EATP frontend feature parity
+1. **Level 1 users** can find and run tasks without confusion
+2. **Level 2 users** can manage processes and delegate to team
+3. **Level 3 users** can view enterprise value chains and compliance
+4. **No user** sees "Agent" or "Pipeline" terminology
+5. **Trust status** is visible on every work unit interaction
+6. **Delegation** UI enforces constraint tightening rule
+
+---
+
+## References
+
+### Ontology Documents
+- `docs/plans/eatp-ontology/01-executive-summary.md`
+- `docs/plans/eatp-ontology/02-work-unit-model.md`
+- `docs/plans/eatp-ontology/03-user-experience-levels.md`
+- `docs/plans/eatp-ontology/04-workspaces.md`
+- `docs/plans/eatp-ontology/05-eatp-mapping.md`
+- `docs/plans/eatp-ontology/06-navigation-architecture.md`
+- `docs/plans/eatp-ontology/07-terminology-glossary.md`
+
+### EATP Integration Documents
+- `docs/plans/eatp-integration/02-eatp-fundamentals.md`
+- `docs/plans/eatp-integration/05-architecture-design.md`
+
+### Whitepapers
+- Agentic Enterprise Architecture Whitepaper (external)
+- EATP Framework v3 (external)
 
 ---
 
 ## Next Steps
 
-1. Create detailed component specifications
-2. Design trust visualization components
-3. Define API contracts with backend
-4. Begin Phase 1 implementation
+1. Review ontology documents for alignment
+2. Begin Phase 1 implementation
+3. Set up component storybook for Work Unit designs
+4. Create API contracts with backend team

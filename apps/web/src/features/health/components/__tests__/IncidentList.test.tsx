@@ -2,15 +2,19 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { renderWithProviders, screen, waitFor } from "@/test/utils";
 import { IncidentList } from "../IncidentList";
 import { QueryClient } from "@tanstack/react-query";
-import * as healthApi from "../../api/health";
+import { healthApi } from "../../api/health";
 import type { Incident } from "../../types";
 
 // Mock the health API
-vi.mock("../../api/health", () => ({
-  healthApi: {
+vi.mock("../../api/health", () => {
+  const mockApi = {
     getIncidents: vi.fn(),
-  },
-}));
+  };
+  return {
+    healthApi: mockApi,
+    default: mockApi,
+  };
+});
 
 const mockIncidents: Incident[] = [
   {
@@ -58,7 +62,7 @@ describe("IncidentList", () => {
 
   describe("rendering", () => {
     it("should render loading state", () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockImplementation(
+      vi.mocked(healthApi.getIncidents).mockImplementation(
         () => new Promise(() => {}) // Never resolves
       );
 
@@ -72,7 +76,7 @@ describe("IncidentList", () => {
     });
 
     it("should render error state", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockRejectedValue(
+      vi.mocked(healthApi.getIncidents).mockRejectedValue(
         new Error("Failed to fetch")
       );
 
@@ -86,7 +90,7 @@ describe("IncidentList", () => {
     });
 
     it("should render empty state when no incidents", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([]);
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([]);
 
       renderWithProviders(<IncidentList />, { queryClient });
 
@@ -99,7 +103,7 @@ describe("IncidentList", () => {
     });
 
     it("should render incidents list", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -119,7 +123,7 @@ describe("IncidentList", () => {
 
   describe("active incidents", () => {
     it("should show count of active incidents", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -136,7 +140,7 @@ describe("IncidentList", () => {
         { ...baseIncident, id: "1a" },
         { ...baseIncident, id: "1b" },
       ];
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         multipleActive
       );
 
@@ -148,7 +152,7 @@ describe("IncidentList", () => {
     });
 
     it("should highlight active incidents", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -165,7 +169,7 @@ describe("IncidentList", () => {
     });
 
     it("should show Active badge for ongoing incidents", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -179,7 +183,7 @@ describe("IncidentList", () => {
 
   describe("severity badges", () => {
     it("should render severity badges correctly", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -203,7 +207,7 @@ describe("IncidentList", () => {
         description: baseIncident.description,
         affectedUsers: baseIncident.affectedUsers,
       };
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue([
+      vi.mocked(healthApi.getIncidents).mockResolvedValue([
         criticalIncident,
       ]);
 
@@ -220,7 +224,7 @@ describe("IncidentList", () => {
 
   describe("incident details", () => {
     it("should display affected users count", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -232,7 +236,7 @@ describe("IncidentList", () => {
     });
 
     it("should display incident description", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -246,7 +250,7 @@ describe("IncidentList", () => {
     });
 
     it("should display relative start time", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -262,7 +266,7 @@ describe("IncidentList", () => {
   describe("resolved incidents", () => {
     it("should show resolved status", async () => {
       const resolvedIncident = mockIncidents[1];
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         resolvedIncident ? [resolvedIncident] : []
       );
 
@@ -276,7 +280,7 @@ describe("IncidentList", () => {
 
     it("should display resolution time", async () => {
       const resolvedIncident = mockIncidents[1];
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         resolvedIncident ? [resolvedIncident] : []
       );
 
@@ -289,7 +293,7 @@ describe("IncidentList", () => {
 
     it("should show check circle icon for resolved incidents", async () => {
       const resolvedIncident = mockIncidents[1];
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         resolvedIncident ? [resolvedIncident] : []
       );
 
@@ -306,7 +310,7 @@ describe("IncidentList", () => {
 
   describe("maxItems prop", () => {
     it("should limit displayed incidents when maxItems is set", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 
@@ -324,7 +328,7 @@ describe("IncidentList", () => {
     });
 
     it("should show all incidents when maxItems is not set", async () => {
-      vi.mocked(healthApi.healthApi.getIncidents).mockResolvedValue(
+      vi.mocked(healthApi.getIncidents).mockResolvedValue(
         mockIncidents
       );
 

@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./features/auth/components/ProtectedRoute";
 import { AuthProvider } from "./features/auth/components/AuthProvider";
+import { UserLevelProvider } from "./contexts/UserLevelContext";
 import { AppShell } from "./components/layout";
 import { ErrorBoundary, LoadingScreen } from "./components/shared";
 import { Toaster } from "./components/ui/toaster";
@@ -24,18 +25,12 @@ const Dashboard = lazy(() =>
   import("./pages/Dashboard").then((m) => ({ default: m.Dashboard }))
 );
 
-// Lazy load agents pages
-const AgentsPage = lazy(() =>
-  import("./pages/agents").then((m) => ({ default: m.AgentsPage }))
-);
+// Lazy load agents pages (only AgentDetailPage still used for direct agent navigation)
 const AgentDetailPage = lazy(() =>
   import("./pages/agents").then((m) => ({ default: m.AgentDetailPage }))
 );
 
-// Lazy load pipelines pages (heaviest - React Flow)
-const PipelinesPage = lazy(() =>
-  import("./pages/pipelines").then((m) => ({ default: m.PipelinesPage }))
-);
+// Lazy load pipelines pages (only PipelineEditorPage still used for new/edit)
 const PipelineEditorPage = lazy(() =>
   import("./pages/pipelines").then((m) => ({ default: m.PipelineEditorPage }))
 );
@@ -126,6 +121,36 @@ const AlertSettingsPage = lazy(() =>
   import("./pages/alerts").then((m) => ({ default: m.AlertSettingsPage }))
 );
 
+// Lazy load work pages (EATP Ontology)
+const MyTasksPage = lazy(() =>
+  import("./pages/work").then((m) => ({ default: m.MyTasksPage }))
+);
+const MyProcessesPage = lazy(() =>
+  import("./pages/work").then((m) => ({ default: m.MyProcessesPage }))
+);
+const ValueChainsPage = lazy(() =>
+  import("./pages/work").then((m) => ({ default: m.ValueChainsPage }))
+);
+
+// Lazy load govern pages (EATP Ontology - Level 3)
+const ComplianceDashboard = lazy(() =>
+  import("./pages/govern").then((m) => ({ default: m.ComplianceDashboard }))
+);
+const EnterpriseAuditTrail = lazy(() =>
+  import("./pages/govern").then((m) => ({ default: m.EnterpriseAuditTrail }))
+);
+
+// Lazy load build pages (EATP Ontology)
+const WorkUnitsPage = lazy(() =>
+  import("./pages/build").then((m) => ({ default: m.WorkUnitsPage }))
+);
+const WorkspacesPage = lazy(() =>
+  import("./pages/build").then((m) => ({ default: m.WorkspacesPage }))
+);
+const WorkspaceDetailPage = lazy(() =>
+  import("./pages/build").then((m) => ({ default: m.WorkspaceDetailPage }))
+);
+
 // Suspense fallback component
 function PageLoader() {
   return <LoadingScreen message="Loading..." />;
@@ -155,13 +180,14 @@ function App() {
 }
 
 /**
- * Routes wrapped in AuthProvider
+ * Routes wrapped in AuthProvider and UserLevelProvider
  * Separated to avoid SSO callback race conditions
  */
 function AuthProviderRoutes() {
   return (
     <AuthProvider>
-      <Routes>
+      <UserLevelProvider>
+        <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -177,10 +203,28 @@ function AuthProviderRoutes() {
           {/* Dashboard */}
           <Route path="/dashboard" element={<Dashboard />} />
 
+          {/* Work (EATP Ontology) */}
+          <Route path="/work/tasks" element={<MyTasksPage />} />
+          <Route path="/work/tasks/:id" element={<MyTasksPage />} />
+          <Route path="/work/processes" element={<MyProcessesPage />} />
+          <Route path="/work/processes/:id" element={<MyProcessesPage />} />
+          <Route path="/work/value-chains" element={<ValueChainsPage />} />
+          <Route path="/work/value-chains/:id" element={<ValueChainsPage />} />
+
+          {/* Govern (EATP Ontology - Level 3) */}
+          <Route path="/govern/compliance" element={<ComplianceDashboard />} />
+          <Route path="/govern/audit-trail" element={<EnterpriseAuditTrail />} />
+
           {/* Build */}
-          <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/build/work-units" element={<WorkUnitsPage />} />
+          <Route path="/build/workspaces" element={<WorkspacesPage />} />
+          <Route path="/build/workspaces/:id" element={<WorkspaceDetailPage />} />
+
+          {/* Legacy routes - redirect to new EATP ontology paths */}
+          <Route path="/agents" element={<Navigate to="/build/work-units" replace />} />
+          <Route path="/agents/new" element={<Navigate to="/build/work-units" replace />} />
           <Route path="/agents/:id" element={<AgentDetailPage />} />
-          <Route path="/pipelines" element={<PipelinesPage />} />
+          <Route path="/pipelines" element={<Navigate to="/build/work-units" replace />} />
           <Route path="/pipelines/new" element={<PipelineEditorPage />} />
           <Route path="/pipelines/:id" element={<PipelineEditorPage />} />
           <Route path="/connectors" element={<ConnectorsPage />} />
@@ -227,7 +271,8 @@ function AuthProviderRoutes() {
         {/* Redirects */}
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+        </Routes>
+      </UserLevelProvider>
     </AuthProvider>
   );
 }

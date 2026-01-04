@@ -303,6 +303,54 @@ class User:
     name: str
 ```
 
+### 4. `soft_delete` Only Affects DELETE, NOT Queries
+
+```python
+# soft_delete config ONLY converts DELETE to UPDATE deleted_at
+@db.model
+class Patient:
+    id: str
+    deleted_at: Optional[str] = None
+    __dataflow__ = {"soft_delete": True}  # Only affects DeleteNode!
+
+# ❌ WRONG ASSUMPTION - Queries do NOT auto-filter
+workflow.add_node("PatientListNode", "list", {"filter": {}})
+# Returns ALL patients INCLUDING soft-deleted ones!
+
+# ✅ CORRECT - Manually filter for non-deleted records
+workflow.add_node("PatientListNode", "list", {
+    "filter": {"deleted_at": {"$null": True}}  # WHERE deleted_at IS NULL
+})
+```
+
+### 5. Query Operators for NULL Checking (v0.10.6+)
+
+```python
+# $null operator for IS NULL
+workflow.add_node("PatientListNode", "active", {
+    "filter": {"deleted_at": {"$null": True}}
+})
+
+# $exists operator for IS NOT NULL
+workflow.add_node("PatientListNode", "deleted", {
+    "filter": {"deleted_at": {"$exists": True}}
+})
+
+# $eq with None also works (v0.10.6+)
+workflow.add_node("PatientListNode", "active", {
+    "filter": {"deleted_at": {"$eq": None}}
+})
+```
+
+### 6. Result Keys by Node Type
+
+| Node Type | Result Key | Access Pattern |
+|-----------|------------|----------------|
+| ListNode | `records` | `results["list"]["records"]` |
+| CountNode | `count` | `results["count"]["count"]` |
+| ReadNode | (direct) | `results["read"]` → dict |
+| UpsertNode | `record`, `created` | `results["upsert"]["record"]` |
+
 ## 🐳 Docker Deployment
 - WorkflowAPI now defaults to AsyncLocalRuntime (async-first, no threads).
 
@@ -328,4 +376,104 @@ runtime = LocalRuntime()
 # Or use helper
 from kailash.runtime import get_runtime
 runtime = get_runtime("async")  # or "sync"
+```
+
+## 🐳 DataFlow Docker Deployment (CRITICAL)
+
+### The Problem: async/sync Event Loop Conflicts
+
+**Why raw SQL workarounds exist**: `auto_migrate=True` (default) creates tables during `@db.model` registration, which is a sync operation. In Docker/FastAPI, this happens when uvicorn loads modules - but by then the async event loop may already be running, causing DF-501 errors.
+
+### The Solution: `auto_migrate=False` + `create_tables_async()`
+
+```python
+from dataflow import DataFlow
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+# CRITICAL: Use auto_migrate=False to prevent sync table creation at import time
+db = DataFlow("postgresql://...", auto_migrate=False)
+
+@db.model  # Models registered but NO tables created here (safe!)
+class User:
+    id: str
+    name: str
+    email: str
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables explicitly in async context - this is the only time tables are created
+    await db.create_tables_async()
+    yield
+    await db.close_async()
+
+app = FastAPI(lifespan=lifespan)
+```
+
+### When to Use Each Pattern
+
+| Context | Pattern | Reason |
+|---------|---------|--------|
+| **Docker/FastAPI** | `auto_migrate=False` + `create_tables_async()` | Async event loop running at import time |
+| **CLI Scripts** | `auto_migrate=True` (default) | No event loop, sync is safe |
+| **pytest (sync)** | `auto_migrate=True` (default) | No async fixtures |
+| **pytest (async)** | `auto_migrate=False` + `create_tables_async()` | Same as FastAPI |
+
+### DataFlow Express (23x Faster CRUD)
+
+For high-performance API endpoints, use `db.express` instead of workflows:
+
+```python
+# Express API: Direct node invocation, 23x faster than workflows
+user = await db.express.create("User", {"id": "user-123", "name": "Alice"})
+user = await db.express.read("User", "user-123")
+users = await db.express.list("User", filter={"status": "active"}, limit=100)
+count = await db.express.count("User", filter={"status": "active"})
+user = await db.express.update("User", "user-123", {"name": "Alice Updated"})
+deleted = await db.express.delete("User", "user-123")
+
+# Performance: ~0.27ms vs ~6.3ms per operation
+```
+
+### Complete FastAPI + DataFlow Example
+
+```python
+from dataflow import DataFlow
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+# Step 1: Initialize with auto_migrate=False
+db = DataFlow(
+    "postgresql://user:pass@localhost:5432/mydb",
+    auto_migrate=False  # CRITICAL for Docker
+)
+
+# Step 2: Register models (no tables created)
+@db.model
+class User:
+    id: str
+    name: str
+    email: str
+
+# Step 3: Create tables in lifespan
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await db.create_tables_async()
+    yield
+    await db.close_async()
+
+app = FastAPI(lifespan=lifespan)
+
+# Step 4: Use Express for CRUD endpoints
+@app.post("/users")
+async def create_user(data: dict):
+    return await db.express.create("User", data)
+
+@app.get("/users/{id}")
+async def get_user(id: str):
+    return await db.express.read("User", id)
+
+@app.get("/users")
+async def list_users(limit: int = 100):
+    return await db.express.list("User", limit=limit)
 ```

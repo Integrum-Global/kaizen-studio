@@ -108,6 +108,21 @@ This directory contains comprehensive documentation for the External Integration
 
 ---
 
+### For Governance Teams
+
+**[Approval Workflows](./08-approval-workflows.md)** (760 lines)
+- What approval workflows are and when to use them
+- Trigger configuration (cost, pattern, rate, environment-based)
+- Multi-approver workflows with escalation
+- Notification adapters (Email, Slack, Teams, Webhook)
+- API endpoints for approval management
+- Integration examples and best practices
+
+**Target Audience**: Security officers, compliance teams, administrators
+**Use When**: You need to implement human-in-the-loop approval for external agent operations
+
+---
+
 ## Quick Navigation
 
 **I want to...**
@@ -122,12 +137,14 @@ This directory contains comprehensive documentation for the External Integration
 - **Monitor External Agents** → [Admin Guide](./03-admin-guide.md#monitoring)
 - **Rotate credentials** → [Admin Guide](./03-admin-guide.md#credential-rotation)
 - **Learn about security** → [Admin Guide](./03-admin-guide.md#security)
+- **Configure approval workflows** → [Approval Workflows](./08-approval-workflows.md#trigger-configuration)
+- **Set up approval notifications** → [Approval Workflows](./08-approval-workflows.md#notification-adapters)
 
 ---
 
 ## Implementation Status
 
-Based on codebase verification (2025-12-20):
+Based on codebase verification (2025-01-04):
 
 | Feature | Status | Location |
 |---------|--------|----------|
@@ -136,17 +153,19 @@ Based on codebase verification (2025-12-20):
 | Governance Service | Implemented | `src/studio/services/governance_service.py` |
 | Lineage Service | Implemented | `src/studio/services/lineage_service.py` |
 | Platform Adapters (5) | Implemented | `src/studio/adapters/*_adapter.py` |
-| Unit Tests | 4 files | `tests/unit/` |
+| Approval Workflows | Implemented | `src/kaizen/trust/governance/` |
+| Unit Tests | 8 files | `tests/unit/` |
 | Integration Tests | 3 files | `tests/integration/` |
 | E2E Tests | 7 files | `tests/e2e/` |
+| Approval Tests | 103 tests | `tests/unit/kaizen/trust/governance/` |
 
 ---
 
 ## Documentation Statistics
 
-- **Total Lines**: ~4,244
-- **Total Files**: 7
-- **Coverage**: User, Admin, API, Developer, Migration, Release
+- **Total Lines**: ~5,000
+- **Total Files**: 8
+- **Coverage**: User, Admin, API, Developer, Migration, Release, Approval Workflows
 
 ---
 

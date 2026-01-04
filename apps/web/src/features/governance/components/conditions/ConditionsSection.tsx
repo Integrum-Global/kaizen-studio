@@ -1,22 +1,14 @@
 /**
  * Main conditions section for the policy editor
- * Contains template bar, condition list, logic toggle, and preview
+ * Contains template bar, condition list, logic toggle, preview, and reference warnings
  */
 
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
-import {
-  Plus,
-  Users,
-  Clock,
-  Shield,
-  Bot,
-  HelpCircle,
-  Info,
-} from "lucide-react";
+import { Plus, HelpCircle, Info } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -24,30 +16,40 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ConditionRow } from "./ConditionRow";
+import { ConditionTemplates } from "./ConditionTemplates";
+import { ConditionTemplatesModal } from "./ConditionTemplatesModal";
+import { OverallPreview } from "./OverallPreview";
+import { ReferenceWarnings } from "./ReferenceWarnings";
 import { useConditionBuilder } from "./hooks";
-import { getCommonTemplates } from "./data/templates";
-import type { ConditionGroup, PolicyCondition } from "./types";
+import { useValidateConditions } from "../../hooks/usePolicyReferences";
+import type { ConditionGroup, PolicyCondition, ConditionTemplate } from "./types";
+import type { ResourceReferenceStatus } from "../../types";
 
 interface ConditionsSectionProps {
   initialConditions?: PolicyCondition[];
   initialLogic?: "all" | "any";
   onChange?: (group: ConditionGroup) => void;
   disabled?: boolean;
+  /** Policy ID for fetching existing references (optional, for edit mode) */
+  policyId?: string;
 }
-
-const templateIcons: Record<string, React.ComponentType<{ className?: string }>> = {
-  Users,
-  Clock,
-  Shield,
-  Bot,
-};
 
 export function ConditionsSection({
   initialConditions = [],
   initialLogic = "all",
   onChange,
   disabled,
+  // policyId is available for future use (e.g., fetching existing references from server)
+  policyId: _policyId,
 }: ConditionsSectionProps) {
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [referenceWarnings, setReferenceWarnings] = useState<
+    ResourceReferenceStatus[]
+  >([]);
+  const [warningsDismissed, setWarningsDismissed] = useState(false);
+
+  const validateConditionsMutation = useValidateConditions();
+
   const {
     conditions,
     logic,
@@ -59,7 +61,6 @@ export function ConditionsSection({
     updateConditionValue,
     setLogic,
     applyTemplate,
-    getOverallTranslation,
     validateCondition,
   } = useConditionBuilder({
     initialConditions,
@@ -67,7 +68,72 @@ export function ConditionsSection({
     onChange,
   });
 
-  const commonTemplates = getCommonTemplates();
+  // Validate references when conditions change or on initial load
+  const validateReferences = useCallback(async () => {
+    if (conditions.length === 0) {
+      setReferenceWarnings([]);
+      return;
+    }
+
+    // Convert PolicyCondition to API format
+    const apiConditions = conditions
+      .filter((c) => c.attribute && c.value !== "")
+      .map((c) => ({
+        attribute: c.attribute,
+        operator: c.operator,
+        value: c.value as string | string[] | number | boolean,
+      }));
+
+    if (apiConditions.length === 0) {
+      setReferenceWarnings([]);
+      return;
+    }
+
+    try {
+      const result = await validateConditionsMutation.mutateAsync({
+        conditions: apiConditions,
+      });
+
+      if (result.references) {
+        setReferenceWarnings(result.references);
+        // Reset dismissed state when new warnings appear
+        if (
+          result.references.some(
+            (r) => r.status === "orphaned" || r.status === "changed"
+          )
+        ) {
+          setWarningsDismissed(false);
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to validate condition references:", error);
+    }
+  }, [conditions, validateConditionsMutation]);
+
+  // Validate on mount if we have initial conditions
+  useEffect(() => {
+    if (initialConditions.length > 0) {
+      validateReferences();
+    }
+    // Only run on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Handle template application from quick bar or modal
+  const handleApplyTemplate = (template: ConditionTemplate) => {
+    applyTemplate(template.id);
+  };
+
+  // Handle dismissing reference warnings
+  const handleDismissWarnings = () => {
+    setWarningsDismissed(true);
+  };
+
+  // Handle refreshing reference validation
+  const handleRefreshWarnings = () => {
+    setWarningsDismissed(false);
+    validateReferences();
+  };
 
   return (
     <div className="space-y-4">
@@ -91,28 +157,23 @@ export function ConditionsSection({
         </div>
       </div>
 
+      {/* Reference Warnings */}
+      {!warningsDismissed && referenceWarnings.length > 0 && (
+        <ReferenceWarnings
+          references={referenceWarnings}
+          onDismiss={handleDismissWarnings}
+          onRefresh={handleRefreshWarnings}
+        />
+      )}
+
       {/* Quick Templates */}
       <div className="space-y-2">
         <Label className="text-sm text-muted-foreground">Quick Templates</Label>
-        <div className="flex flex-wrap gap-2">
-          {commonTemplates.map((template) => {
-            const Icon = templateIcons[template.icon] || Shield;
-            return (
-              <Button
-                key={template.id}
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => applyTemplate(template.id)}
-                disabled={disabled}
-                className="gap-2"
-              >
-                <Icon className="h-4 w-4" />
-                {template.name}
-              </Button>
-            );
-          })}
-        </div>
+        <ConditionTemplates
+          onApplyTemplate={handleApplyTemplate}
+          onOpenModal={() => setIsTemplateModalOpen(true)}
+          disabled={disabled}
+        />
       </div>
 
       {/* Condition List */}
@@ -197,13 +258,19 @@ export function ConditionsSection({
         </div>
       )}
 
-      {/* Preview */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription className="whitespace-pre-line">
-          {getOverallTranslation()}
-        </AlertDescription>
-      </Alert>
+      {/* Overall Preview */}
+      <OverallPreview
+        conditions={conditions}
+        logic={logic}
+        showJsonToggle={true}
+      />
+
+      {/* Templates Modal */}
+      <ConditionTemplatesModal
+        open={isTemplateModalOpen}
+        onOpenChange={setIsTemplateModalOpen}
+        onApplyTemplate={handleApplyTemplate}
+      />
     </div>
   );
 }

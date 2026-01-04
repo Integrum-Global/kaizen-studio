@@ -46,6 +46,7 @@ export interface UpdateUserRequest {
  * User filters for listing
  */
 export interface UserFilters {
+  search?: string;
   status?: UserStatus;
   role?: UserRole;
   limit?: number;

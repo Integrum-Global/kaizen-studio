@@ -186,3 +186,45 @@ export interface AvailablePermissions {
   resource: ResourceType;
   actions: ActionType[];
 }
+
+/**
+ * Reference status for resources referenced in policy conditions
+ */
+export type ReferenceStatus = "valid" | "orphaned" | "changed";
+
+/**
+ * Resource reference status for condition validation
+ */
+export interface ResourceReferenceStatus {
+  type: string;
+  id: string;
+  name?: string;
+  status: ReferenceStatus;
+  validated_at: string;
+}
+
+/**
+ * Result from condition validation endpoint
+ */
+export interface ConditionValidationResult {
+  is_valid: boolean;
+  errors: string[];
+  warnings: string[];
+  references: ResourceReferenceStatus[];
+}
+
+/**
+ * Request payload for validating conditions
+ */
+export interface ValidateConditionsRequest {
+  conditions: Omit<PolicyCondition, "id">[];
+}
+
+/**
+ * Response from policy references endpoint
+ */
+export interface PolicyReferencesResponse {
+  policy_id: string;
+  references: ResourceReferenceStatus[];
+  validated_at: string;
+}

@@ -53,8 +53,8 @@ interface ResourcePickerProps {
  * Resource type display configuration
  */
 const resourceConfig: Record<PickerResourceType, { label: string; searchPlaceholder: string }> = {
-  agent: { label: "Agent", searchPlaceholder: "Search agents..." },
-  pipeline: { label: "Pipeline", searchPlaceholder: "Search pipelines..." },
+  agent: { label: "Work Unit", searchPlaceholder: "Search work units..." },
+  pipeline: { label: "Process", searchPlaceholder: "Search processes..." },
   deployment: { label: "Deployment", searchPlaceholder: "Search deployments..." },
   gateway: { label: "Gateway", searchPlaceholder: "Search gateways..." },
   team: { label: "Team", searchPlaceholder: "Search teams..." },

@@ -333,3 +333,88 @@ async def evaluate_access(
         "resource_type": request.resource_type,
         "action": request.action,
     }
+
+
+# ==================== Condition Validation Endpoints ====================
+
+
+class ValidateConditionsRequest(BaseModel):
+    """Request model for validating policy conditions."""
+
+    conditions: dict = Field(..., description="Conditions to validate")
+
+
+class ResourceReferenceStatus(BaseModel):
+    """Status of a resource reference."""
+
+    type: str = Field(..., description="Resource type (agent, deployment, etc)")
+    id: str = Field(..., description="Resource ID")
+    name: str | None = Field(None, description="Resource display name")
+    status: str = Field(..., description="Status: valid, orphaned, changed")
+    validated_at: str = Field(..., description="ISO timestamp of validation")
+
+
+@router.post("/validate-conditions")
+async def validate_conditions(
+    request: ValidateConditionsRequest,
+    user: dict = Depends(Permission("policies:read")),
+    abac: ABACService = Depends(get_abac_service),
+):
+    """
+    Validate policy conditions structure and resource references.
+
+    Returns validation result with any errors or warnings about orphaned/changed resources.
+
+    Requires permission: policies:read
+    """
+    org_id = user.get("organization_id")
+    if not org_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Organization ID required",
+        )
+
+    # Validate conditions structure
+    validation_result = await abac.validate_conditions(
+        conditions=request.conditions,
+        organization_id=org_id,
+    )
+
+    return validation_result
+
+
+@router.get("/{policy_id}/references")
+async def get_policy_references(
+    policy_id: str,
+    user: dict = Depends(Permission("policies:read")),
+    abac: ABACService = Depends(get_abac_service),
+):
+    """
+    Get resource references used in a policy's conditions.
+
+    Returns list of resources with their current status (valid, orphaned, changed).
+
+    Requires permission: policies:read
+    """
+    # Check policy exists and belongs to org
+    policy = await abac.get_policy(policy_id)
+    if not policy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Policy not found",
+        )
+
+    org_id = user.get("organization_id")
+    if policy.get("organization_id") != org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this policy",
+        )
+
+    # Get and validate resource references
+    references = await abac.get_policy_references(
+        policy_id=policy_id,
+        organization_id=org_id,
+    )
+
+    return {"references": references, "total": len(references)}

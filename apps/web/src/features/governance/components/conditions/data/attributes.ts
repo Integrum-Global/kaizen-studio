@@ -82,13 +82,13 @@ const resourceAttributes: AttributeDefinition[] = [
   {
     id: "resource_agent",
     path: "resource.agent_id",
-    label: "Agent",
-    description: "Select specific agents from the registry",
+    label: "Work Unit",
+    description: "Select specific work units from the registry",
     category: "resource",
     valueType: "resource_ids",
     resourceType: "agent",
     operators: ["in", "not_in"],
-    placeholder: "Select agents...",
+    placeholder: "Select work units...",
   },
   {
     id: "resource_deployment",
@@ -115,13 +115,13 @@ const resourceAttributes: AttributeDefinition[] = [
   {
     id: "resource_pipeline",
     path: "resource.pipeline_id",
-    label: "Pipeline",
-    description: "Select specific pipelines",
+    label: "Process",
+    description: "Select specific processes",
     category: "resource",
     valueType: "resource_ids",
     resourceType: "pipeline",
     operators: ["in", "not_in"],
-    placeholder: "Select pipelines...",
+    placeholder: "Select processes...",
   },
   {
     id: "resource_environment",

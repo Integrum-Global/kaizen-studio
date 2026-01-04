@@ -20,3 +20,11 @@ export {
   useCanPerform,
   useAvailablePermissions,
 } from "./useGovernance";
+
+export {
+  policyReferenceKeys,
+  useValidateConditions,
+  useValidateConditionsFromPolicies,
+  usePolicyReferences,
+  usePolicyReferenceIssues,
+} from "./usePolicyReferences";

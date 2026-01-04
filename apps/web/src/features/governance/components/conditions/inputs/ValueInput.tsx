@@ -13,12 +13,16 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
 import type { ConditionValue, ConditionOperator, ResourceReference } from "../types";
 import { isResourceReference } from "../types";
 import { getAttributeById } from "../data/attributes";
 import { ResourcePicker } from "./ResourcePicker";
 import { TimePicker } from "./TimePicker";
+import { TeamPicker } from "./TeamPicker";
+import { IpRangeInput } from "./IpRangeInput";
+import { useConditionValidation } from "../hooks/useConditionValidation";
+import type { PolicyCondition } from "../types";
 
 interface ValueInputProps {
   attributeId: string;
@@ -26,6 +30,10 @@ interface ValueInputProps {
   value: ConditionValue;
   onChange: (value: ConditionValue) => void;
   disabled?: boolean;
+  /** Optional condition for validation display */
+  condition?: PolicyCondition;
+  /** Whether to show inline validation errors */
+  showValidation?: boolean;
 }
 
 export function ValueInput({
@@ -34,8 +42,22 @@ export function ValueInput({
   value,
   onChange,
   disabled,
+  condition,
+  showValidation = false,
 }: ValueInputProps) {
   const attribute = getAttributeById(attributeId);
+
+  // Create a synthetic condition for validation if not provided
+  const conditionForValidation: PolicyCondition = condition || {
+    id: "temp",
+    category: attribute?.category || "user",
+    attribute: attributeId,
+    operator,
+    value,
+  };
+
+  // Get validation result
+  const validation = useConditionValidation(conditionForValidation);
 
   // No attribute selected
   if (!attribute) {
@@ -180,15 +202,41 @@ export function ValueInput({
     );
   }
 
-  // Resource picker types
+  // Team picker for team_ids - use dedicated TeamPicker
+  if (attribute.valueType === "team_ids") {
+    const multiple = operator === "in" || operator === "not_in";
+
+    // Extract ResourceReference from value or create null
+    const resourceValue: ResourceReference | null = isResourceReference(value)
+      ? value
+      : null;
+
+    return (
+      <div className="flex-1 space-y-1">
+        <TeamPicker
+          value={resourceValue}
+          onChange={(ref) => onChange(ref as ConditionValue)}
+          multiple={multiple}
+          disabled={disabled}
+          placeholder={attribute.placeholder}
+        />
+        {showValidation && validation.warnings.length > 0 && (
+          <p className="text-xs text-amber-600 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {validation.warnings[0]}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Resource picker types (agent, deployment, gateway, etc.)
   if (
     attribute.valueType === "resource_id" ||
-    attribute.valueType === "resource_ids" ||
-    attribute.valueType === "team_ids"
+    attribute.valueType === "resource_ids"
   ) {
     const multiple =
       attribute.valueType === "resource_ids" ||
-      attribute.valueType === "team_ids" ||
       operator === "in" ||
       operator === "not_in";
 
@@ -198,14 +246,22 @@ export function ValueInput({
       : null;
 
     return (
-      <ResourcePicker
-        resourceType={attribute.resourceType || "agent"}
-        value={resourceValue}
-        onChange={(ref) => onChange(ref as ConditionValue)}
-        multiple={multiple}
-        disabled={disabled}
-        placeholder={attribute.placeholder}
-      />
+      <div className="flex-1 space-y-1">
+        <ResourcePicker
+          resourceType={attribute.resourceType || "agent"}
+          value={resourceValue}
+          onChange={(ref) => onChange(ref as ConditionValue)}
+          multiple={multiple}
+          disabled={disabled}
+          placeholder={attribute.placeholder}
+        />
+        {showValidation && validation.warnings.length > 0 && (
+          <p className="text-xs text-amber-600 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            {validation.warnings[0]}
+          </p>
+        )}
+      </div>
     );
   }
 
@@ -227,52 +283,20 @@ export function ValueInput({
     );
   }
 
-  // IP range - text input with validation hint
+  // IP range - use dedicated IpRangeInput with validation
   if (attribute.valueType === "ip_range") {
-    // Multi-value for "in" operator
-    if (operator === "in") {
-      const values = Array.isArray(value) ? value.map(String) : [];
-
-      return (
-        <div className="flex-1 space-y-2">
-          <div className="flex flex-wrap gap-1 min-h-[32px] p-1 border rounded-md">
-            {values.map((v, i) => (
-              <Badge key={i} variant="secondary" className="gap-1 font-mono">
-                {v}
-                <button
-                  type="button"
-                  onClick={() => onChange(values.filter((_, idx) => idx !== i))}
-                  className="hover:bg-muted rounded"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-          <Input
-            placeholder={attribute.placeholder}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && e.currentTarget.value) {
-                e.preventDefault();
-                onChange([...values, e.currentTarget.value]);
-                e.currentTarget.value = "";
-              }
-            }}
-            disabled={disabled}
-            className="font-mono"
-          />
-          <p className="text-xs text-muted-foreground">Press Enter to add</p>
-        </div>
-      );
-    }
+    const multiple = operator === "in";
+    const ipValue = multiple
+      ? (Array.isArray(value) ? value.map(String) : [])
+      : (typeof value === "string" ? value : "");
 
     return (
-      <Input
-        value={String(value || "")}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={attribute.placeholder}
+      <IpRangeInput
+        value={ipValue}
+        onChange={(v) => onChange(v)}
+        multiple={multiple}
         disabled={disabled}
-        className="flex-1 font-mono"
+        placeholder={attribute.placeholder}
       />
     );
   }

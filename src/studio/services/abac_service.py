@@ -697,3 +697,226 @@ class ABACService:
             "context": context,
         }
         return self._evaluate_conditions(conditions, eval_context)
+
+    # ==================== Reference Management ====================
+
+    async def validate_conditions(
+        self, conditions: dict, organization_id: str
+    ) -> dict:
+        """
+        Validate policy conditions structure and resource references.
+
+        Args:
+            conditions: Conditions dictionary to validate
+            organization_id: Organization ID for resource lookups
+
+        Returns:
+            Validation result with is_valid, errors, and warnings
+        """
+        errors = []
+        warnings = []
+        references = []
+
+        # Extract resource references from conditions
+        refs = self._extract_resource_references(conditions)
+
+        # Validate each reference
+        for ref in refs:
+            ref_status = await self._validate_resource_reference(
+                ref, organization_id
+            )
+            references.append(ref_status)
+
+            if ref_status["status"] == "orphaned":
+                warnings.append(
+                    f"Resource not found: {ref_status['type']} '{ref_status.get('name', ref_status['id'])}'"
+                )
+            elif ref_status["status"] == "changed":
+                warnings.append(
+                    f"Resource may have changed: {ref_status['type']} '{ref_status.get('name', ref_status['id'])}'"
+                )
+
+        return {
+            "is_valid": len(errors) == 0,
+            "errors": errors,
+            "warnings": warnings,
+            "references": references,
+        }
+
+    async def get_policy_references(
+        self, policy_id: str, organization_id: str
+    ) -> list[dict]:
+        """
+        Get resource references used in a policy's conditions.
+
+        Args:
+            policy_id: Policy ID
+            organization_id: Organization ID for resource lookups
+
+        Returns:
+            List of resource references with current status
+        """
+        policy = await self.get_policy(policy_id)
+        if not policy:
+            return []
+
+        conditions = policy.get("conditions", {})
+
+        # Check for stored references first
+        stored_refs_str = policy.get("resource_refs")
+        if stored_refs_str:
+            stored_refs = json.loads(stored_refs_str)
+        else:
+            stored_refs = []
+
+        # Extract current references from conditions
+        current_refs = self._extract_resource_references(conditions)
+
+        # Validate each reference
+        validated_refs = []
+        for ref in current_refs:
+            ref_status = await self._validate_resource_reference(ref, organization_id)
+            validated_refs.append(ref_status)
+
+        return validated_refs
+
+    def _extract_resource_references(self, conditions: dict) -> list[dict]:
+        """
+        Extract resource references from conditions.
+
+        Looks for $ref: "resource" patterns in condition values.
+
+        Args:
+            conditions: Conditions dictionary
+
+        Returns:
+            List of resource reference dictionaries
+        """
+        refs = []
+
+        def extract_from_value(value: Any) -> None:
+            if isinstance(value, dict):
+                if value.get("$ref") == "resource":
+                    refs.append({
+                        "type": value.get("type", "unknown"),
+                        "id": value.get("selector", {}).get("id"),
+                        "ids": value.get("selector", {}).get("ids"),
+                        "name": value.get("display", {}).get("name"),
+                    })
+                else:
+                    for v in value.values():
+                        extract_from_value(v)
+            elif isinstance(value, list):
+                for item in value:
+                    extract_from_value(item)
+
+        extract_from_value(conditions)
+        return refs
+
+    async def _validate_resource_reference(
+        self, ref: dict, organization_id: str
+    ) -> dict:
+        """
+        Validate a single resource reference.
+
+        Args:
+            ref: Resource reference dict with type, id/ids
+            organization_id: Organization ID
+
+        Returns:
+            Reference status dict with status field
+        """
+        now = datetime.now(UTC).isoformat()
+        ref_type = ref.get("type", "unknown")
+        ref_id = ref.get("id")
+        ref_ids = ref.get("ids", [])
+
+        # Handle single ID
+        if ref_id:
+            exists = await self._check_resource_exists(ref_type, ref_id, organization_id)
+            return {
+                "type": ref_type,
+                "id": ref_id,
+                "name": ref.get("name"),
+                "status": "valid" if exists else "orphaned",
+                "validated_at": now,
+            }
+
+        # Handle multiple IDs
+        if ref_ids:
+            all_exist = True
+            for rid in ref_ids:
+                if not await self._check_resource_exists(ref_type, rid, organization_id):
+                    all_exist = False
+                    break
+
+            return {
+                "type": ref_type,
+                "ids": ref_ids,
+                "name": ref.get("name"),
+                "status": "valid" if all_exist else "orphaned",
+                "validated_at": now,
+            }
+
+        # No ID provided
+        return {
+            "type": ref_type,
+            "id": None,
+            "name": ref.get("name"),
+            "status": "orphaned",
+            "validated_at": now,
+        }
+
+    async def _check_resource_exists(
+        self, resource_type: str, resource_id: str, organization_id: str
+    ) -> bool:
+        """
+        Check if a resource exists.
+
+        Args:
+            resource_type: Type of resource (agent, team, deployment, etc.)
+            resource_id: Resource ID
+            organization_id: Organization ID
+
+        Returns:
+            True if resource exists
+        """
+        # Map resource types to their read nodes
+        node_map = {
+            "agent": "AgentReadNode",
+            "deployment": "DeploymentReadNode",
+            "pipeline": "PipelineReadNode",
+            "gateway": "GatewayReadNode",
+            "team": "TeamReadNode",
+            "user": "UserReadNode",
+            "workspace": "WorkspaceReadNode",
+        }
+
+        node_name = node_map.get(resource_type)
+        if not node_name:
+            # Unknown resource type - assume exists to avoid false orphans
+            return True
+
+        try:
+            workflow = WorkflowBuilder()
+            workflow.add_node(
+                node_name,
+                "check_resource",
+                {
+                    "id": resource_id,
+                    "raise_on_not_found": False,
+                },
+            )
+
+            results, _ = await self.runtime.execute_workflow_async(
+                workflow.build(), inputs={}
+            )
+
+            result = results.get("check_resource")
+            if result and result.get("found") is False:
+                return False
+            return result is not None
+
+        except Exception:
+            # On error, assume exists to avoid false orphans
+            return True

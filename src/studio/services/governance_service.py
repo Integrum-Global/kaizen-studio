@@ -22,21 +22,34 @@ from studio.config import get_settings, is_production
 # Try to import from kaizen.trust.governance, fall back to stubs if not available
 try:
     from kaizen.trust.governance import (
+        # Budget
         BudgetCheckResult,
-        ConflictResolutionStrategy,
         ExternalAgentBudget,
         ExternalAgentBudgetEnforcer,
+        # Rate limiting
+        RateLimitCheckResult,
+        RateLimitConfig,
+        ExternalAgentRateLimiter,
+        # Policy
+        ConflictResolutionStrategy,
         ExternalAgentPolicy,
         ExternalAgentPolicyContext,
         ExternalAgentPolicyEngine,
-        ExternalAgentRateLimiter,
         PolicyEffect,
         PolicyEvaluationResult,
-        RateLimitCheckResult,
-        RateLimitConfig,
+        # Approval
+        ApprovalCheckResult,
+        ApprovalRequest,
+        ApprovalStatus,
+        ApprovalTriggerConfig,
+        ApprovalWorkflowConfig,
+        ExternalAgentApprovalManager,
+        InMemoryApprovalStore,
+        TriggerContext,
     )
 
     GOVERNANCE_AVAILABLE = True
+    APPROVAL_AVAILABLE = True
 except ImportError:
     # Provide stub implementations for when kaizen.trust is not available
     GOVERNANCE_AVAILABLE = False
@@ -61,7 +74,11 @@ except ImportError:
         allowed: bool = True
         reason: str = "Governance not available (stub)"
         remaining_budget_usd: float | None = None
+        remaining_executions: int | None = None
+        usage_percentage: float = 0.0
         degraded_mode: bool = True
+        warning_triggered: bool = False
+        warning_message: str | None = None
 
     @dataclass
     class RateLimitCheckResult:
@@ -313,6 +330,198 @@ except ImportError:
 
         pass
 
+    # Approval stubs
+    APPROVAL_AVAILABLE = False
+
+    class ApprovalStatus(Enum):
+        """Stub for approval status."""
+
+        PENDING = "pending"
+        APPROVED = "approved"
+        REJECTED = "rejected"
+        EXPIRED = "expired"
+        ESCALATED = "escalated"
+
+    @dataclass
+    class ApprovalRequest:
+        """Stub for approval request."""
+
+        id: str = ""
+        external_agent_id: str = ""
+        organization_id: str = ""
+        requested_by_user_id: str = ""
+        requested_by_team_id: str | None = None
+        trigger_reason: str = ""
+        payload_summary: str = ""
+        estimated_cost: float | None = None
+        estimated_tokens: int | None = None
+        status: ApprovalStatus = ApprovalStatus.PENDING
+        created_at: datetime | None = None
+        expires_at: datetime | None = None
+        required_approvals: int = 1
+        approvals: list = field(default_factory=list)
+        rejections: list = field(default_factory=list)
+
+    @dataclass
+    class ApprovalCheckResult:
+        """Stub for approval check result."""
+
+        required: bool = False
+        trigger_reason: str = "Approval not available (stub)"
+        existing_request: ApprovalRequest | None = None
+        triggers_matched: list = field(default_factory=list)
+
+    @dataclass
+    class TriggerContext:
+        """Stub for trigger context."""
+
+        external_agent_id: str = ""
+        organization_id: str = ""
+        user_id: str = ""
+        team_id: str | None = None
+        payload: dict = field(default_factory=dict)
+        estimated_cost: float | None = None
+        estimated_tokens: int | None = None
+        environment: str = "development"
+        metadata: dict = field(default_factory=dict)
+
+    @dataclass
+    class ApprovalTriggerConfig:
+        """Stub for approval trigger configuration."""
+
+        cost_threshold: float | None = None
+        token_threshold: int | None = None
+        payload_patterns: list = field(default_factory=list)
+        sensitive_data_patterns: list = field(default_factory=list)
+        require_first_invocation: bool = False
+        require_new_agent: bool = False
+        require_production_approval: bool = False
+        environments_requiring_approval: list = field(default_factory=list)
+
+    @dataclass
+    class ApprovalWorkflowConfig:
+        """Stub for approval workflow configuration."""
+
+        timeout_hours: int = 24
+        reminder_interval_hours: int = 4
+        auto_reject_on_timeout: bool = False
+        auto_approve_on_timeout: bool = False
+        approver_roles: list = field(default_factory=lambda: ["admin"])
+        approver_users: list = field(default_factory=list)
+        require_multiple_approvers: int = 1
+        allow_self_approval: bool = False
+
+    class InMemoryApprovalStore:
+        """Stub for in-memory approval store."""
+
+        def __init__(self):
+            self._requests: dict[str, ApprovalRequest] = {}
+
+        async def save(self, request: ApprovalRequest) -> None:
+            self._requests[request.id] = request
+
+        async def get(self, request_id: str) -> ApprovalRequest | None:
+            return self._requests.get(request_id)
+
+        async def get_pending_for_approver(
+            self, approver_id: str, organization_id: str | None = None
+        ) -> list[ApprovalRequest]:
+            return [
+                r for r in self._requests.values()
+                if r.status == ApprovalStatus.PENDING
+                and (organization_id is None or r.organization_id == organization_id)
+            ]
+
+        async def get_pending_for_agent(
+            self, agent_id: str, organization_id: str | None = None
+        ) -> list[ApprovalRequest]:
+            return [
+                r for r in self._requests.values()
+                if r.external_agent_id == agent_id
+                and r.status == ApprovalStatus.PENDING
+                and (organization_id is None or r.organization_id == organization_id)
+            ]
+
+    class ExternalAgentApprovalManager:
+        """Stub for approval manager."""
+
+        def __init__(
+            self,
+            store=None,
+            trigger_config=None,
+            workflow_config=None,
+            notification_service=None,
+            history_provider=None,
+        ):
+            self.store = store or InMemoryApprovalStore()
+            self.trigger_config = trigger_config or ApprovalTriggerConfig()
+            self.workflow_config = workflow_config or ApprovalWorkflowConfig()
+
+        async def check_approval_required(
+            self, context: TriggerContext
+        ) -> ApprovalCheckResult:
+            """Check if approval is required (stub always returns not required)."""
+            return ApprovalCheckResult(
+                required=False,
+                trigger_reason="Approval workflows not available (stub)",
+            )
+
+        async def create_approval_request(
+            self,
+            external_agent_id: str,
+            organization_id: str,
+            user_id: str,
+            trigger_reason: str,
+            payload_summary: str,
+            **kwargs,
+        ) -> ApprovalRequest:
+            """Create approval request (stub)."""
+            import uuid
+            request = ApprovalRequest(
+                id=str(uuid.uuid4()),
+                external_agent_id=external_agent_id,
+                organization_id=organization_id,
+                requested_by_user_id=user_id,
+                trigger_reason=trigger_reason,
+                payload_summary=payload_summary,
+                status=ApprovalStatus.PENDING,
+                created_at=datetime.utcnow(),
+            )
+            await self.store.save(request)
+            return request
+
+        async def get_request(self, request_id: str) -> ApprovalRequest | None:
+            """Get approval request by ID."""
+            return await self.store.get(request_id)
+
+        async def get_pending_requests(
+            self, approver_id: str, organization_id: str | None = None
+        ) -> list[ApprovalRequest]:
+            """Get pending requests for approver."""
+            return await self.store.get_pending_for_approver(approver_id, organization_id)
+
+        async def approve(
+            self, request_id: str, approver_id: str, reason: str | None = None, **kwargs
+        ) -> ApprovalRequest:
+            """Approve a request (stub)."""
+            request = await self.store.get(request_id)
+            if not request:
+                raise ValueError(f"Request {request_id} not found")
+            request.status = ApprovalStatus.APPROVED
+            await self.store.save(request)
+            return request
+
+        async def reject(
+            self, request_id: str, approver_id: str, reason: str, **kwargs
+        ) -> ApprovalRequest:
+            """Reject a request (stub)."""
+            request = await self.store.get(request_id)
+            if not request:
+                raise ValueError(f"Request {request_id} not found")
+            request.status = ApprovalStatus.REJECTED
+            await self.store.save(request)
+            return request
+
 
 logger = logging.getLogger(__name__)
 
@@ -322,16 +531,24 @@ if not GOVERNANCE_AVAILABLE:
         "Using stub implementations for governance features. "
         "Advanced EATP governance features will be disabled."
     )
+elif not APPROVAL_AVAILABLE:
+    logger.warning(
+        "kaizen.trust.governance.approval module not available. "
+        "Using stub implementations for approval workflows. "
+        "Human-in-the-loop approval features will be disabled."
+    )
 
 
 class GovernanceService:
     """
-    Governance service for external agent budget, rate limiting, and policy enforcement.
+    Governance service for external agent budget, rate limiting, policy enforcement,
+    and human-in-the-loop approval workflows.
 
     Integrates Kaizen governance components:
     - ExternalAgentBudgetEnforcer: Budget tracking and enforcement
     - ExternalAgentRateLimiter: Redis-backed rate limiting
     - ExternalAgentPolicyEngine: ABAC policy evaluation
+    - ExternalAgentApprovalManager: Human-in-the-loop approval workflows
 
     Examples:
         >>> service = GovernanceService()
@@ -351,6 +568,22 @@ class GovernanceService:
         >>> result = await service.evaluate_policy("agent-001", context)
         >>> if result.effect == PolicyEffect.DENY:
         ...     print(f"Policy denied: {result.reason}")
+        >>>
+        >>> # Check if approval required
+        >>> context = TriggerContext(
+        ...     external_agent_id="agent-001",
+        ...     organization_id="org-001",
+        ...     user_id="user-001",
+        ...     payload={"action": "execute"},
+        ...     estimated_cost=150.0,  # Above threshold
+        ... )
+        >>> result = await service.check_approval_required(context)
+        >>> if result.required:
+        ...     request = await service.create_approval_request(
+        ...         context=context,
+        ...         trigger_reason=result.trigger_reason,
+        ...     )
+        ...     print(f"Approval required: {request.id}")
     """
 
     def __init__(
@@ -360,6 +593,8 @@ class GovernanceService:
         redis_url: str | None = None,
         rate_limit_config: RateLimitConfig | None = None,
         conflict_resolution_strategy: ConflictResolutionStrategy = ConflictResolutionStrategy.DENY_OVERRIDES,
+        approval_trigger_config: ApprovalTriggerConfig | None = None,
+        approval_workflow_config: ApprovalWorkflowConfig | None = None,
     ):
         """
         Initialize governance service.
@@ -370,6 +605,8 @@ class GovernanceService:
             redis_url: Redis connection URL for rate limiting
             rate_limit_config: Rate limit configuration
             conflict_resolution_strategy: Policy conflict resolution strategy
+            approval_trigger_config: Approval trigger configuration (cost thresholds, patterns, etc.)
+            approval_workflow_config: Approval workflow configuration (timeouts, approvers, etc.)
         """
         self.runtime = runtime or AsyncLocalRuntime()
         self.db = db
@@ -398,6 +635,12 @@ class GovernanceService:
             conflict_resolution_strategy=conflict_resolution_strategy,
         )
 
+        # Initialize approval manager
+        self._approval_trigger_config = approval_trigger_config or ApprovalTriggerConfig()
+        self._approval_workflow_config = approval_workflow_config or ApprovalWorkflowConfig()
+        self.approval_manager: ExternalAgentApprovalManager | None = None
+        self._approval_manager_initialized = False
+
         # Cache for agent budgets (avoid repeated DB lookups)
         self._budget_cache: dict[str, ExternalAgentBudget] = {}
         self._cache_ttl_seconds = 60
@@ -406,8 +649,8 @@ class GovernanceService:
         """
         Initialize governance service components.
 
-        Initializes Redis connection for rate limiting. Gracefully degrades
-        if Redis unavailable.
+        Initializes Redis connection for rate limiting and approval manager.
+        Gracefully degrades if components unavailable.
         """
         # Try to initialize rate limiter
         try:
@@ -427,6 +670,23 @@ class GovernanceService:
             )
             self.rate_limiter = None
             self._rate_limiter_initialized = False
+
+        # Initialize approval manager
+        try:
+            self.approval_manager = ExternalAgentApprovalManager(
+                store=InMemoryApprovalStore(),
+                trigger_config=self._approval_trigger_config,
+                workflow_config=self._approval_workflow_config,
+            )
+            self._approval_manager_initialized = True
+            logger.info("GovernanceService initialized with approval workflows")
+        except Exception as e:
+            logger.warning(
+                f"Failed to initialize approval manager: {e}. "
+                "Approval workflows will be disabled."
+            )
+            self.approval_manager = None
+            self._approval_manager_initialized = False
 
     async def close(self) -> None:
         """Close governance service resources."""
@@ -814,6 +1074,220 @@ class GovernanceService:
         self.policy_engine.remove_policy(policy_id)
 
     # ===================
+    # Approval Workflows
+    # ===================
+
+    async def check_approval_required(
+        self,
+        external_agent_id: str,
+        organization_id: str,
+        user_id: str,
+        payload: dict[str, Any],
+        estimated_cost: float | None = None,
+        estimated_tokens: int | None = None,
+        team_id: str | None = None,
+        environment: str = "development",
+        metadata: dict[str, Any] | None = None,
+    ) -> ApprovalCheckResult:
+        """
+        Check if external agent invocation requires human approval.
+
+        Evaluates trigger conditions against the invocation context:
+        - Cost threshold triggers
+        - Token threshold triggers
+        - Sensitive data pattern detection
+        - Payload pattern matching
+        - First invocation checks
+        - New agent checks
+        - Environment-based triggers
+
+        Args:
+            external_agent_id: External agent identifier
+            organization_id: Organization identifier
+            user_id: User identifier
+            payload: Invocation payload to analyze
+            estimated_cost: Estimated cost in USD
+            estimated_tokens: Estimated token count
+            team_id: Optional team identifier
+            environment: Environment (production, staging, development)
+            metadata: Optional additional metadata
+
+        Returns:
+            ApprovalCheckResult with required flag and trigger details
+
+        Examples:
+            >>> result = await service.check_approval_required(
+            ...     external_agent_id="agent-001",
+            ...     organization_id="org-001",
+            ...     user_id="user-001",
+            ...     payload={"action": "execute", "data": {"amount": 10000}},
+            ...     estimated_cost=150.0,  # Above default threshold
+            ... )
+            >>> if result.required:
+            ...     print(f"Approval needed: {result.trigger_reason}")
+            ...     print(f"Triggers: {result.triggers_matched}")
+        """
+        # Graceful degradation if approval manager not initialized
+        if not self.approval_manager or not self._approval_manager_initialized:
+            logger.warning(
+                f"Approval manager not initialized. No approval required for {external_agent_id} (disabled)."
+            )
+            return ApprovalCheckResult(
+                required=False,
+                trigger_reason="Approval workflows not available",
+            )
+
+        try:
+            # Build trigger context
+            context = TriggerContext(
+                external_agent_id=external_agent_id,
+                organization_id=organization_id,
+                user_id=user_id,
+                team_id=team_id,
+                payload=payload,
+                estimated_cost=estimated_cost,
+                estimated_tokens=estimated_tokens,
+                environment=environment,
+                metadata=metadata or {},
+            )
+
+            # Check if approval required
+            result = await self.approval_manager.check_approval_required(context)
+
+            if result.required:
+                logger.info(
+                    f"Approval required for {external_agent_id}: "
+                    f"reason={result.trigger_reason}, triggers={result.triggers_matched}"
+                )
+            else:
+                logger.debug(f"No approval required for {external_agent_id}")
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Approval check failed: {e}", exc_info=True)
+            # SECURITY: Fail-closed in production (require approval on error)
+            # In development/testing, fail-open for debugging convenience
+            if is_production():
+                return ApprovalCheckResult(
+                    required=True,
+                    trigger_reason=f"Approval check failed (fail-closed): {str(e)}",
+                    triggers_matched=["error_failsafe"],
+                )
+            else:
+                return ApprovalCheckResult(
+                    required=False,
+                    trigger_reason=f"Approval check failed (fail-open - dev only): {str(e)}",
+                )
+
+    async def create_approval_request(
+        self,
+        external_agent_id: str,
+        organization_id: str,
+        user_id: str,
+        trigger_reason: str,
+        payload_summary: str,
+        team_id: str | None = None,
+        estimated_cost: float | None = None,
+        estimated_tokens: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> ApprovalRequest:
+        """
+        Create a new approval request for external agent invocation.
+
+        Args:
+            external_agent_id: External agent identifier
+            organization_id: Organization identifier
+            user_id: User identifier requesting approval
+            trigger_reason: Reason why approval is required
+            payload_summary: Summary of the payload (for approver review)
+            team_id: Optional team identifier
+            estimated_cost: Estimated cost in USD
+            estimated_tokens: Estimated token count
+            metadata: Optional additional metadata
+
+        Returns:
+            ApprovalRequest with pending status
+
+        Raises:
+            RuntimeError: If approval manager not initialized
+
+        Examples:
+            >>> request = await service.create_approval_request(
+            ...     external_agent_id="agent-001",
+            ...     organization_id="org-001",
+            ...     user_id="user-001",
+            ...     trigger_reason="Cost exceeds threshold ($150.00 > $100.00)",
+            ...     payload_summary="Execute financial transaction: transfer $10,000",
+            ...     estimated_cost=150.0,
+            ... )
+            >>> print(f"Approval request created: {request.id}")
+            >>> print(f"Status: {request.status}")
+        """
+        if not self.approval_manager or not self._approval_manager_initialized:
+            raise RuntimeError("Approval manager not initialized")
+
+        try:
+            request = await self.approval_manager.create_approval_request(
+                external_agent_id=external_agent_id,
+                organization_id=organization_id,
+                user_id=user_id,
+                trigger_reason=trigger_reason,
+                payload_summary=payload_summary,
+                team_id=team_id,
+                estimated_cost=estimated_cost,
+                estimated_tokens=estimated_tokens,
+                metadata=metadata,
+            )
+
+            logger.info(
+                f"Created approval request {request.id} for {external_agent_id}: "
+                f"reason={trigger_reason}"
+            )
+
+            return request
+
+        except Exception as e:
+            logger.error(f"Failed to create approval request: {e}", exc_info=True)
+            raise
+
+    async def get_approval_request(self, request_id: str) -> ApprovalRequest | None:
+        """
+        Get approval request by ID.
+
+        Args:
+            request_id: Approval request identifier
+
+        Returns:
+            ApprovalRequest or None if not found
+        """
+        if not self.approval_manager:
+            return None
+        return await self.approval_manager.get_request(request_id)
+
+    async def get_pending_approvals(
+        self,
+        approver_id: str,
+        organization_id: str | None = None,
+    ) -> list[ApprovalRequest]:
+        """
+        Get pending approval requests for an approver.
+
+        Args:
+            approver_id: Approver user identifier
+            organization_id: Optional organization filter
+
+        Returns:
+            List of pending ApprovalRequest objects
+        """
+        if not self.approval_manager:
+            return []
+        return await self.approval_manager.get_pending_requests(
+            approver_id=approver_id,
+            organization_id=organization_id,
+        )
+
+    # ===================
     # Governance Status
     # ===================
 
@@ -897,12 +1371,28 @@ class GovernanceService:
             ),
         }
 
+        # Get approval status
+        approval_status = {
+            "enabled": self._approval_manager_initialized,
+            "pending_count": 0,
+        }
+        if self.approval_manager and self._approval_manager_initialized:
+            try:
+                pending = await self.approval_manager.store.get_pending_for_agent(
+                    agent_id=external_agent_id,
+                    organization_id=organization_id,
+                )
+                approval_status["pending_count"] = len(pending)
+            except Exception as e:
+                logger.warning(f"Failed to get pending approvals: {e}")
+
         return {
             "external_agent_id": external_agent_id,
             "organization_id": organization_id,
             "budget": budget_status,
             "rate_limit": rate_limit_status,
             "policy": policy_status,
+            "approval": approval_status,
             "timestamp": datetime.utcnow().isoformat(),
         }
 

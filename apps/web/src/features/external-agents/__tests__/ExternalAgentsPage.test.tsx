@@ -34,6 +34,15 @@ const mockAgents = [
   },
 ];
 
+// Mock toast hook
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: vi.fn(() => ({
+    toast: vi.fn(),
+    dismiss: vi.fn(),
+    toasts: [],
+  })),
+}));
+
 // Mock API
 vi.mock("../hooks", () => ({
   useExternalAgents: vi.fn(() => ({
@@ -42,6 +51,15 @@ vi.mock("../hooks", () => ({
     error: null,
   })),
   useDeleteExternalAgent: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  })),
+  useCreateExternalAgent: vi.fn(() => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+    isSuccess: false,
+  })),
+  useUpdateExternalAgent: vi.fn(() => ({
     mutateAsync: vi.fn(),
     isPending: false,
   })),
@@ -139,10 +157,13 @@ describe("ExternalAgentsPage", () => {
     });
     fireEvent.click(registerButton);
 
-    // Wizard dialog should open (checked by looking for dialog title)
+    // Wizard dialog should open (checked by looking for dialog role and step text)
     await waitFor(() => {
-      expect(screen.getByText(/Register External Agent/i)).toBeInTheDocument();
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
+
+    // Dialog should contain the step indicator
+    expect(screen.getByText(/Step 1 of/)).toBeInTheDocument();
   });
 
   it("displays action menu for each agent row", () => {
