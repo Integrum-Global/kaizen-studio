@@ -15,6 +15,7 @@
 
 import { createContext, useContext, useMemo, ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/api';
 import type {
   UserLevel,
   UserPermissions,
@@ -100,13 +101,10 @@ export function UserLevelProvider({ children }: UserLevelProviderProps) {
     queryFn: async () => {
       // In a real implementation, this would call the API
       // For now, we'll determine level based on available user data
-      const response = await fetch(`/api/v1/users/${user?.id}/level`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
+      try {
+        const response = await apiClient.get<UserLevelResponse>(`/api/v1/users/${user?.id}/level`);
+        return response.data;
+      } catch {
         // Fallback to determining from user roles if API fails
         return {
           level: 1 as UserLevel,
@@ -116,8 +114,6 @@ export function UserLevelProvider({ children }: UserLevelProviderProps) {
           trustChainPosition: 'none' as const,
         };
       }
-
-      return response.json();
     },
     enabled: isAuthenticated && !!user?.id,
     staleTime: 5 * 60 * 1000, // 5 minutes

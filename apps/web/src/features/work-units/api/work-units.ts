@@ -4,6 +4,7 @@
  * API client for work unit operations.
  */
 
+import { apiClient } from '@/api';
 import type {
   WorkUnit,
   WorkUnitListResponse,
@@ -23,55 +24,37 @@ export async function fetchWorkUnits(
   page = 1,
   pageSize = 20
 ): Promise<WorkUnitListResponse> {
-  const params = new URLSearchParams();
-  params.set('page', String(page));
-  params.set('pageSize', String(pageSize));
+  const params: Record<string, string> = {
+    page: String(page),
+    pageSize: String(pageSize),
+  };
 
-  if (filters?.search) params.set('search', filters.search);
-  if (filters?.type && filters.type !== 'all') params.set('type', filters.type);
+  if (filters?.search) params.search = filters.search;
+  if (filters?.type && filters.type !== 'all') params.type = filters.type;
   if (filters?.trustStatus && filters.trustStatus !== 'all') {
-    params.set('trustStatus', filters.trustStatus);
+    params.trustStatus = filters.trustStatus;
   }
-  if (filters?.workspaceId) params.set('workspaceId', filters.workspaceId);
-  if (filters?.tags?.length) params.set('tags', filters.tags.join(','));
+  if (filters?.workspaceId) params.workspaceId = filters.workspaceId;
+  if (filters?.tags?.length) params.tags = filters.tags.join(',');
 
-  const response = await fetch(`${API_BASE}?${params.toString()}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch work units: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<WorkUnitListResponse>(API_BASE, { params });
+  return response.data;
 }
 
 /**
  * Fetch a single work unit by ID
  */
 export async function fetchWorkUnit(id: string): Promise<WorkUnit> {
-  const response = await fetch(`${API_BASE}/${id}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch work unit: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<WorkUnit>(`${API_BASE}/${id}`);
+  return response.data;
 }
 
 /**
  * Create a new work unit
  */
 export async function createWorkUnit(input: CreateWorkUnitInput): Promise<WorkUnit> {
-  const response = await fetch(API_BASE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to create work unit: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.post<WorkUnit>(API_BASE, input);
+  return response.data;
 }
 
 /**
@@ -81,30 +64,15 @@ export async function updateWorkUnit(
   id: string,
   input: UpdateWorkUnitInput
 ): Promise<WorkUnit> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to update work unit: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.put<WorkUnit>(`${API_BASE}/${id}`, input);
+  return response.data;
 }
 
 /**
  * Delete a work unit
  */
 export async function deleteWorkUnit(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/${id}`, {
-    method: 'DELETE',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to delete work unit: ${response.statusText}`);
-  }
+  await apiClient.delete(`${API_BASE}/${id}`);
 }
 
 /**
@@ -114,17 +82,8 @@ export async function runWorkUnit(
   id: string,
   inputs?: Record<string, unknown>
 ): Promise<RunResult> {
-  const response = await fetch(`${API_BASE}/${id}/run`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ inputs }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to run work unit: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.post<RunResult>(`${API_BASE}/${id}/run`, { inputs });
+  return response.data;
 }
 
 /**
@@ -134,39 +93,28 @@ export async function fetchRecentRuns(
   workUnitId: string,
   limit = 10
 ): Promise<RunResult[]> {
-  const response = await fetch(`${API_BASE}/${workUnitId}/runs?limit=${limit}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch runs: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<RunResult[]>(`${API_BASE}/${workUnitId}/runs`, {
+    params: { limit },
+  });
+  return response.data;
 }
 
 /**
  * Get available tasks for the current user (Level 1 view)
  */
 export async function fetchAvailableTasks(): Promise<WorkUnit[]> {
-  const response = await fetch(`${API_BASE}/available`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch available tasks: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<WorkUnit[]>(`${API_BASE}/available`);
+  return response.data;
 }
 
 /**
  * Get user's recent run results
  */
 export async function fetchUserRecentRuns(limit = 10): Promise<RunResult[]> {
-  const response = await fetch(`/api/v1/runs/recent?limit=${limit}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch recent runs: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<RunResult[]>('/api/v1/runs/recent', {
+    params: { limit },
+  });
+  return response.data;
 }
 
 /**
@@ -191,26 +139,16 @@ export interface DelegateeResponse {
  * Get available workspaces for the current user
  */
 export async function fetchWorkspaces(): Promise<WorkspaceResponse[]> {
-  const response = await fetch('/api/v1/workspaces');
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch workspaces: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<WorkspaceResponse[]>('/api/v1/workspaces');
+  return response.data;
 }
 
 /**
  * Get available users for delegation
  */
 export async function fetchDelegatees(): Promise<DelegateeResponse[]> {
-  const response = await fetch('/api/v1/users/delegatees');
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch delegatees: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<DelegateeResponse[]>('/api/v1/users/delegatees');
+  return response.data;
 }
 
 /**
@@ -230,13 +168,10 @@ export interface ProcessResponse extends WorkUnit {
  * Get processes (composite work units) for Level 2 view
  */
 export async function fetchProcesses(): Promise<ProcessResponse[]> {
-  const response = await fetch(`${API_BASE}?type=composite`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch processes: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<ProcessResponse[]>(API_BASE, {
+    params: { type: 'composite' },
+  });
+  return response.data;
 }
 
 /**
@@ -262,11 +197,8 @@ export interface ActivityEvent {
  * Get team activity events
  */
 export async function fetchTeamActivity(limit = 10): Promise<ActivityEvent[]> {
-  const response = await fetch(`/api/v1/activity/team?limit=${limit}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch team activity: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<ActivityEvent[]>('/api/v1/activity/team', {
+    params: { limit },
+  });
+  return response.data;
 }

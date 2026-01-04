@@ -7,6 +7,7 @@
  * @see docs/plans/eatp-ontology/04-workspaces.md
  */
 
+import { apiClient } from '@/api';
 import type {
   Workspace,
   WorkspaceSummary,
@@ -43,24 +44,16 @@ export async function fetchWorkspaces(
   const queryString = params.toString();
   const url = `${API_BASE}/workspaces${queryString ? `?${queryString}` : ''}`;
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch workspaces: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<WorkspaceSummary[]>(url);
+  return response.data;
 }
 
 /**
  * Fetch a single workspace by ID
  */
 export async function fetchWorkspace(id: string): Promise<Workspace> {
-  const response = await fetch(`${API_BASE}/workspaces/${id}`);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch workspace: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.get<Workspace>(`${API_BASE}/workspaces/${id}`);
+  return response.data;
 }
 
 /**
@@ -69,19 +62,8 @@ export async function fetchWorkspace(id: string): Promise<Workspace> {
 export async function createWorkspace(
   input: CreateWorkspaceInput
 ): Promise<Workspace> {
-  const response = await fetch(`${API_BASE}/workspaces`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to create workspace: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.post<Workspace>(`${API_BASE}/workspaces`, input);
+  return response.data;
 }
 
 /**
@@ -91,60 +73,30 @@ export async function updateWorkspace(
   id: string,
   input: UpdateWorkspaceInput
 ): Promise<Workspace> {
-  const response = await fetch(`${API_BASE}/workspaces/${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(input),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to update workspace: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.patch<Workspace>(`${API_BASE}/workspaces/${id}`, input);
+  return response.data;
 }
 
 /**
  * Archive a workspace (soft delete)
  */
 export async function archiveWorkspace(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/workspaces/${id}/archive`, {
-    method: 'POST',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to archive workspace: ${response.statusText}`);
-  }
+  await apiClient.post(`${API_BASE}/workspaces/${id}/archive`);
 }
 
 /**
  * Restore an archived workspace
  */
 export async function restoreWorkspace(id: string): Promise<Workspace> {
-  const response = await fetch(`${API_BASE}/workspaces/${id}/restore`, {
-    method: 'POST',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to restore workspace: ${response.statusText}`);
-  }
-
-  return response.json();
+  const response = await apiClient.post<Workspace>(`${API_BASE}/workspaces/${id}/restore`);
+  return response.data;
 }
 
 /**
  * Delete a workspace permanently (owner only)
  */
 export async function deleteWorkspace(id: string): Promise<void> {
-  const response = await fetch(`${API_BASE}/workspaces/${id}`, {
-    method: 'DELETE',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to delete workspace: ${response.statusText}`);
-  }
+  await apiClient.delete(`${API_BASE}/workspaces/${id}`);
 }
 
 /**
@@ -155,20 +107,7 @@ export async function addWorkspaceMember(
   userId: string,
   role: WorkspaceMemberRole
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE}/workspaces/${workspaceId}/members`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ userId, role }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to add member: ${response.statusText}`);
-  }
+  await apiClient.post(`${API_BASE}/workspaces/${workspaceId}/members`, { userId, role });
 }
 
 /**
@@ -179,20 +118,7 @@ export async function updateWorkspaceMember(
   userId: string,
   role: WorkspaceMemberRole
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE}/workspaces/${workspaceId}/members/${userId}`,
-    {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ role }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to update member: ${response.statusText}`);
-  }
+  await apiClient.patch(`${API_BASE}/workspaces/${workspaceId}/members/${userId}`, { role });
 }
 
 /**
@@ -202,16 +128,7 @@ export async function removeWorkspaceMember(
   workspaceId: string,
   userId: string
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE}/workspaces/${workspaceId}/members/${userId}`,
-    {
-      method: 'DELETE',
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to remove member: ${response.statusText}`);
-  }
+  await apiClient.delete(`${API_BASE}/workspaces/${workspaceId}/members/${userId}`);
 }
 
 /**
@@ -222,20 +139,10 @@ export async function addWorkUnitToWorkspace(
   workUnitId: string,
   constraints?: Record<string, unknown>
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE}/workspaces/${workspaceId}/work-units`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ workUnitId, constraints }),
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to add work unit: ${response.statusText}`);
-  }
+  await apiClient.post(`${API_BASE}/workspaces/${workspaceId}/work-units`, {
+    workUnitId,
+    constraints,
+  });
 }
 
 /**
@@ -245,16 +152,7 @@ export async function removeWorkUnitFromWorkspace(
   workspaceId: string,
   workUnitId: string
 ): Promise<void> {
-  const response = await fetch(
-    `${API_BASE}/workspaces/${workspaceId}/work-units/${workUnitId}`,
-    {
-      method: 'DELETE',
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Failed to remove work unit: ${response.statusText}`);
-  }
+  await apiClient.delete(`${API_BASE}/workspaces/${workspaceId}/work-units/${workUnitId}`);
 }
 
 /**
