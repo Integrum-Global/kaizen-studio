@@ -25,6 +25,10 @@ from studio.services.trust_service import HumanOrigin, TrustService
 from studio.services.webhook_service import WebhookService
 from studio.services.workspace_service import WorkspaceService
 
+# Phase 14: Stub endpoint services
+from studio.services.run_service import RunService
+from studio.services.activity_service import ActivityService
+
 __all__ = [
     "AuthService",
     "OrganizationService",
@@ -47,4 +51,7 @@ __all__ = [
     "ConnectorService",
     "TrustService",
     "HumanOrigin",
+    # Phase 14: Stub endpoint services
+    "RunService",
+    "ActivityService",
 ]

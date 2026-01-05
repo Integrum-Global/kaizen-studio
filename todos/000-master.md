@@ -3,7 +3,7 @@
 **Project**: Enterprise AI Agent Platform
 **Timeline**: 16 weeks to enterprise MVP
 **Created**: 2025-11-22
-**Last Updated**: 2026-01-04
+**Last Updated**: 2026-01-05
 
 ---
 
@@ -248,11 +248,28 @@
 
 ## Progress Summary
 
-**Completed**: 40/44 TODOs (91%)
-**Near Complete**: 0/44 TODOs (0%)
-**In Progress**: 1/44 TODOs (2%)
-**Pending**: 3/44 TODOs (7%)
-**Overall Project Status**: Backend 100% COMPLETE, Frontend E2E Tests 100% COMPLETE, External Integrations 100% COMPLETE, Frontend Enhancements 100% COMPLETE, Kaizen Framework Governance 100% COMPLETE, EATP Ontology Redesign IN PROGRESS
+**Completed**: 44/52 TODOs (85%)
+**Near Complete**: 0/52 TODOs (0%)
+**In Progress**: 1/52 TODOs (2%)
+**Pending**: 7/52 TODOs (13%)
+**Overall Project Status**: Backend 100% COMPLETE, Frontend E2E Tests 100% COMPLETE, External Integrations 100% COMPLETE, Frontend Enhancements 100% COMPLETE, Kaizen Framework Governance 100% COMPLETE, EATP Ontology Redesign IN PROGRESS, Stub Endpoint Implementation 80% COMPLETE (P1-P4 done, P5 pending)
+
+### Phase 14 Progress (Stub Endpoint Implementation) - Updated 2026-01-05
+- [x] TODO-040-P1: Database Models - COMPLETED (2026-01-05)
+- [x] TODO-040-P2: Services - COMPLETED (2026-01-05)
+- [x] TODO-040-P3: API Endpoints - COMPLETED (2026-01-05)
+- [x] TODO-040-P4: Testing - COMPLETED (2026-01-05) - 100% pass rate
+- [ ] TODO-040-P5: Documentation - PENDING
+
+**Test Evidence**: 73 unit tests (73/73 passing), 18 integration tests (18/18 passing) - 91 total tests at 100% pass rate
+
+**Testing Fixes Applied (2026-01-05)**:
+1. `test_add_member_creates_record` - Fixed mock to return data at top level (DataFlow pattern)
+2. `test_update_member_changes_role` - Used correct node ID "find_member", handled multiple calls
+3. `test_remove_member_deletes_record` - Used correct node ID "find_member"
+4. `test_add_work_unit_creates_record` - Fixed mock to return data at top level
+5. `test_remove_member_returns_false_when_not_found` - Used correct node ID "find_member"
+**File Changed**: `tests/unit/test_phase14_services.py`
 
 ### Phase 8 Final Results (Frontend E2E Test Remediation)
 - [x] TODO-018: Test Fixtures - COMPLETED (2025-12-17)
@@ -742,6 +759,99 @@
     - Migration guide for existing users
   - Tests: E2E tests covering all user levels
   - Reference: `docs/plans/eatp-frontend/08-migration-guide.md`
+
+---
+
+## Phase 14: Stub Endpoint Implementation (January 2026) - IN PROGRESS
+
+**Overview**: Implement real functionality for currently stubbed API endpoints that return empty lists, mock UUIDs, or hardcoded responses.
+
+**Timeline**: 8-10 days (5 phases)
+**Dependencies**: TODO-036 (EATP Ontology Phase 1)
+**Created**: 2026-01-04
+**Last Updated**: 2026-01-05
+**Progress**: 4/5 phases complete, 100% test pass rate (91/91 tests)
+
+### Stub Endpoints - ALL IMPLEMENTED
+
+| API | Endpoint | Previous Behavior | Status |
+|-----|----------|-------------------|--------|
+| Runs | `GET /runs/recent` | Returns `[]` | IMPLEMENTED |
+| Runs | `GET /runs/{run_id}` | Returns 404 | IMPLEMENTED |
+| Activity | `GET /activity/team` | Returns `[]` | IMPLEMENTED |
+| Activity | `GET /activity/my` | Returns `[]` | IMPLEMENTED |
+| Work Units | `POST /work-units/{id}/run` | Mock UUID, no execution | IMPLEMENTED |
+| Work Units | `GET /work-units/{id}/runs` | Returns `[]` | IMPLEMENTED |
+| Workspaces | `POST /workspaces/{id}/members` | Hardcoded success | IMPLEMENTED |
+| Workspaces | `PATCH /workspaces/{id}/members/{user_id}` | Hardcoded response | IMPLEMENTED |
+| Workspaces | `DELETE /workspaces/{id}/members/{user_id}` | Hardcoded response | IMPLEMENTED |
+| Workspaces | `POST /workspaces/{id}/work-units` | Hardcoded response | IMPLEMENTED |
+| Workspaces | `DELETE /workspaces/{id}/work-units/{work_unit_id}` | Hardcoded response | IMPLEMENTED |
+
+### Phase 1: Database Models (Days 1-2) - COMPLETED
+- [x] TODO-040-P1-database-models (Priority: HIGH)
+  - Status: COMPLETED (2026-01-05)
+  - Owner: Backend Team
+  - Evidence: `todos/completed/TODO-040-P1-database-models-COMPLETED-2026-01-05.md`
+  - Deliverables:
+    - WorkspaceMember model (`src/studio/models/workspace_member.py`)
+    - WorkspaceWorkUnit model (`src/studio/models/workspace_work_unit.py`)
+    - Run model (`src/studio/models/run.py`)
+    - Unit tests: 10/10 passing
+
+### Phase 2: Services (Days 3-4) - COMPLETED
+- [x] TODO-040-P2-services (Priority: HIGH)
+  - Status: COMPLETED (2026-01-05)
+  - Owner: Backend Team
+  - Evidence: `todos/completed/TODO-040-P2-services-COMPLETED-2026-01-05.md`
+  - Deliverables:
+    - RunService with Kaizen BaseAgent integration (`src/studio/services/run_service.py`)
+    - ActivityService with multi-source aggregation (`src/studio/services/activity_service.py`)
+    - WorkspaceService member/work unit methods (`src/studio/services/workspace_service.py`)
+
+### Phase 3: API Endpoint Implementation (Days 5-6) - COMPLETED
+- [x] TODO-040-P3-api-endpoints (Priority: HIGH)
+  - Status: COMPLETED (2026-01-05)
+  - Owner: Backend Team
+  - Evidence: `todos/completed/TODO-040-P3-api-endpoints-COMPLETED-2026-01-05.md`
+  - Deliverables:
+    - Runs API: 2 endpoints implemented
+    - Activity API: 2 endpoints implemented
+    - Work Units API: 2 endpoints implemented
+    - Workspaces API: 5 endpoints implemented
+    - Unit tests: 23/23 passing
+
+### Phase 4: Testing (Days 7-8) - COMPLETED
+- [x] TODO-040-P4-testing (Priority: HIGH)
+  - Status: COMPLETED (2026-01-05)
+  - Owner: QA Team
+  - Test Results:
+    - Tier 1 (Unit): 73/73 passing (100% pass rate)
+    - Tier 2 (Integration): 18/18 passing (100% pass rate)
+    - Tier 3 (E2E): Deferred to Phase 5
+  - Fixes Applied: 5 test fixture corrections for DataFlow return format
+  - Evidence: `todos/completed/TODO-040-P4-testing-COMPLETED-2026-01-05.md`
+  - File Changed: `tests/unit/test_phase14_services.py`
+
+### Phase 5: Documentation (Days 9-10) - PENDING
+- [ ] TODO-040-P5-documentation (Priority: MEDIUM)
+  - Status: PENDING
+  - Owner: All Teams
+  - Dependencies: Phase 4
+  - Deliverables:
+    - OpenAPI documentation updates
+    - Architecture documentation
+    - API reference examples
+
+### Main Todo File
+- [TODO-040-stub-endpoint-implementation.md](./active/TODO-040-stub-endpoint-implementation.md) - Complete implementation plan
+
+### Recent Fixes (2026-01-05)
+1. Fixed Workspace model - added missing columns (workspace_type, is_archived, archived_at)
+2. Fixed workspace API 404 handling
+3. Fixed update_member to use member ID in filter (DataFlow requires 'id')
+4. Fixed get_work_unit to bypass DataFlow cache with enable_cache: False
+5. Cleaned up debug logging
 
 ---
 

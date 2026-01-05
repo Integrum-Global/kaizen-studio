@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from studio.api.auth import require_permission
 from studio.services.agent_service import AgentService
 from studio.services.pipeline_service import PipelineService
+from studio.services.run_service import RunService
 
 router = APIRouter(prefix="/work-units", tags=["Work Units"])
 
@@ -18,6 +19,7 @@ router = APIRouter(prefix="/work-units", tags=["Work Units"])
 # Singleton service instances
 _agent_service: AgentService | None = None
 _pipeline_service: PipelineService | None = None
+_run_service: RunService | None = None
 
 
 def get_agent_service() -> AgentService:
@@ -34,6 +36,14 @@ def get_pipeline_service() -> PipelineService:
     if _pipeline_service is None:
         _pipeline_service = PipelineService()
     return _pipeline_service
+
+
+def get_run_service() -> RunService:
+    """Get RunService singleton instance."""
+    global _run_service
+    if _run_service is None:
+        _run_service = RunService()
+    return _run_service
 
 
 # ===================
@@ -488,41 +498,69 @@ async def run_work_unit(
     current_user: dict = Depends(require_permission("agents:execute")),
     agent_service: AgentService = Depends(get_agent_service),
     pipeline_service: PipelineService = Depends(get_pipeline_service),
+    run_service: RunService = Depends(get_run_service),
 ):
     """
     Execute a work unit.
+    Creates a run record and initiates execution.
     """
-    from datetime import UTC, datetime
-    import uuid
+    org_id = current_user["organization_id"]
+    user_id = current_user["id"]
+    user_name = current_user.get("name")
 
     # Try to find as agent first
     agent = await agent_service.get(work_unit_id)
     if agent:
-        if agent["organization_id"] != current_user["organization_id"]:
+        if agent["organization_id"] != org_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to run this work unit",
             )
-        # Return mock run result (actual execution would be handled separately)
+        # Create run record
+        run = await run_service.create_run(
+            organization_id=org_id,
+            work_unit_id=work_unit_id,
+            work_unit_type="atomic",
+            work_unit_name=agent["name"],
+            user_id=user_id,
+            user_name=user_name,
+            input_data=request.inputs if request.inputs else None,
+        )
+        # Mark as running
+        await run_service.mark_running(run["id"])
+
         return RunResultResponse(
-            id=str(uuid.uuid4()),
+            id=run["id"],
             status="running",
-            startedAt=datetime.now(UTC).isoformat(),
+            startedAt=run.get("started_at", ""),
             input=request.inputs,
         )
 
     # Try to find as pipeline
     pipeline = await pipeline_service.get(work_unit_id)
     if pipeline:
-        if pipeline["organization_id"] != current_user["organization_id"]:
+        if pipeline["organization_id"] != org_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to run this work unit",
             )
+        # Create run record
+        run = await run_service.create_run(
+            organization_id=org_id,
+            work_unit_id=work_unit_id,
+            work_unit_type="composite",
+            work_unit_name=pipeline["name"],
+            user_id=user_id,
+            user_name=user_name,
+            input_data=request.inputs if request.inputs else None,
+        )
+        # Mark as running
+        await run_service.mark_running(run["id"])
+
         return RunResultResponse(
-            id=str(uuid.uuid4()),
+            id=run["id"],
             status="running",
-            startedAt=datetime.now(UTC).isoformat(),
+            startedAt=run.get("started_at", ""),
             input=request.inputs,
         )
 
@@ -539,20 +577,23 @@ async def list_work_unit_runs(
     current_user: dict = Depends(require_permission("agents:read")),
     agent_service: AgentService = Depends(get_agent_service),
     pipeline_service: PipelineService = Depends(get_pipeline_service),
+    run_service: RunService = Depends(get_run_service),
 ):
     """
     List recent runs for a work unit.
     """
+    org_id = current_user["organization_id"]
+
     # Verify access
     agent = await agent_service.get(work_unit_id)
-    if agent and agent["organization_id"] != current_user["organization_id"]:
+    if agent and agent["organization_id"] != org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view runs for this work unit",
         )
 
     pipeline = await pipeline_service.get(work_unit_id)
-    if pipeline and pipeline["organization_id"] != current_user["organization_id"]:
+    if pipeline and pipeline["organization_id"] != org_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view runs for this work unit",
@@ -564,5 +605,24 @@ async def list_work_unit_runs(
             detail="Work unit not found",
         )
 
-    # Return empty list for now - actual runs would come from execution service
-    return []
+    # Get runs from RunService
+    runs = await run_service.get_work_unit_runs(
+        work_unit_id=work_unit_id,
+        organization_id=org_id,
+        limit=limit,
+    )
+
+    import json
+
+    return [
+        RunResultResponse(
+            id=run["id"],
+            status=run.get("status", "pending"),
+            startedAt=run.get("started_at", run.get("created_at", "")),
+            completedAt=run.get("completed_at"),
+            input=json.loads(run["input_data"]) if run.get("input_data") else None,
+            output=json.loads(run["output_data"]) if run.get("output_data") else None,
+            error=run.get("error"),
+        )
+        for run in runs
+    ]

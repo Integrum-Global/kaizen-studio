@@ -62,9 +62,7 @@ from studio.config import get_redis_url  # noqa: E402
 from studio.models import db as _global_db  # noqa: E402
 from studio.services.auth_service import AuthService  # noqa: E402
 
-# Note: No need for pytest_sessionstart or manual table creation!
-#
-# DataFlow 0.9.7 Lazy Initialization Pattern:
+# Note: DataFlow 0.9.7 Lazy Initialization Pattern:
 # - Models are registered at import time (synchronous, fast)
 # - Tables are created on FIRST USE with auto_migrate=True (async, deferred)
 # - The global db instance in studio.models has auto_migrate=True by default
@@ -143,6 +141,10 @@ async def test_db() -> AsyncGenerator[DataFlow, None]:
     # Delete in reverse dependency order to avoid foreign key violations
     # Order matters: child tables first, parent tables last
     cleanup_nodes = [
+        # Level 6: Phase 14 new models (most dependent)
+        "RunBulkDeleteNode",
+        "WorkspaceMemberBulkDeleteNode",
+        "WorkspaceWorkUnitBulkDeleteNode",
         # Level 5: Most dependent tables
         "WebhookDeliveryBulkDeleteNode",
         "DeploymentLogBulkDeleteNode",
@@ -1633,6 +1635,114 @@ async def second_org_client(
         client.headers["Authorization"] = f"Bearer {session['token']}"
 
         yield client, user, org
+
+
+# Phase 14: Stub endpoint model factories
+
+
+@pytest.fixture
+def workspace_member_factory():
+    """Factory to create workspace member test data."""
+
+    def _create_workspace_member(
+        id: str = None,
+        workspace_id: str = None,
+        user_id: str = None,
+        role: str = "member",
+        constraints: str = None,
+        invited_by: str = None,
+        department: str = None,
+    ) -> dict:
+        now = datetime.now(UTC).isoformat()
+        return {
+            "id": id or str(uuid.uuid4()),
+            "workspace_id": workspace_id or str(uuid.uuid4()),
+            "user_id": user_id or str(uuid.uuid4()),
+            "role": role,
+            "constraints": constraints,
+            "invited_by": invited_by,
+            "department": department,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+    return _create_workspace_member
+
+
+@pytest.fixture
+def workspace_work_unit_factory():
+    """Factory to create workspace work unit test data."""
+
+    def _create_workspace_work_unit(
+        id: str = None,
+        workspace_id: str = None,
+        work_unit_id: str = None,
+        work_unit_type: str = "atomic",
+        delegation_id: str = None,
+        constraints: str = None,
+        added_by: str = None,
+        department: str = None,
+    ) -> dict:
+        now = datetime.now(UTC).isoformat()
+        return {
+            "id": id or str(uuid.uuid4()),
+            "workspace_id": workspace_id or str(uuid.uuid4()),
+            "work_unit_id": work_unit_id or str(uuid.uuid4()),
+            "work_unit_type": work_unit_type,
+            "delegation_id": delegation_id,
+            "constraints": constraints,
+            "added_by": added_by or str(uuid.uuid4()),
+            "department": department,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+    return _create_workspace_work_unit
+
+
+@pytest.fixture
+def run_factory():
+    """Factory to create run test data."""
+
+    def _create_run(
+        id: str = None,
+        organization_id: str = None,
+        work_unit_id: str = None,
+        work_unit_type: str = "atomic",
+        work_unit_name: str = None,
+        user_id: str = None,
+        user_name: str = None,
+        status: str = "pending",
+        input_data: str = None,
+        output_data: str = None,
+        error: str = None,
+        error_type: str = None,
+        started_at: str = None,
+        completed_at: str = None,
+        execution_metric_id: str = None,
+    ) -> dict:
+        now = datetime.now(UTC).isoformat()
+        return {
+            "id": id or str(uuid.uuid4()),
+            "organization_id": organization_id or str(uuid.uuid4()),
+            "work_unit_id": work_unit_id or str(uuid.uuid4()),
+            "work_unit_type": work_unit_type,
+            "work_unit_name": work_unit_name or f"Work Unit {uuid.uuid4().hex[:6]}",
+            "user_id": user_id or str(uuid.uuid4()),
+            "user_name": user_name,
+            "status": status,
+            "input_data": input_data,
+            "output_data": output_data,
+            "error": error,
+            "error_type": error_type,
+            "started_at": started_at or now,
+            "completed_at": completed_at,
+            "execution_metric_id": execution_metric_id,
+            "created_at": now,
+            "updated_at": now,
+        }
+
+    return _create_run
 
 
 @pytest.fixture

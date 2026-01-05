@@ -79,6 +79,11 @@ from studio.models.webhook import Webhook
 from studio.models.webhook_delivery import WebhookDelivery
 from studio.models.workspace import Workspace
 
+# Phase 14: Stub endpoint models
+from studio.models.workspace_member import WorkspaceMember
+from studio.models.workspace_work_unit import WorkspaceWorkUnit
+from studio.models.run import Run
+
 __all__ = [
     "db",
     "Organization",
@@ -127,4 +132,8 @@ __all__ = [
     "TrustDelegation",
     "TrustAuditAnchor",
     "TrustAuthority",
+    # Phase 14: Stub endpoint models
+    "WorkspaceMember",
+    "WorkspaceWorkUnit",
+    "Run",
 ]

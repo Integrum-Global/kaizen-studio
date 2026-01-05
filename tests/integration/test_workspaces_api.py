@@ -317,15 +317,23 @@ class TestWorkspaceMembers:
             "/api/v1/workspaces",
             json={"name": "Workspace for Role Update", "workspaceType": "permanent"},
         )
+        assert create_response.status_code == 201, f"Create workspace failed: {create_response.text}"
         workspace_id = create_response.json()["id"]
+
+        # First add a member
+        add_response = await client.post(
+            f"/api/v1/workspaces/{workspace_id}/members",
+            json={"userId": "test-user-for-update", "role": "member"},
+        )
+        assert add_response.status_code == 201, f"Add member failed: {add_response.text}"
 
         # Update member role
         response = await client.patch(
-            f"/api/v1/workspaces/{workspace_id}/members/test-user-123",
+            f"/api/v1/workspaces/{workspace_id}/members/test-user-for-update",
             json={"role": "admin"},
         )
 
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Update member failed: {response.text}"
         data = response.json()
         assert data["role"] == "admin"
 
@@ -341,9 +349,15 @@ class TestWorkspaceMembers:
         )
         workspace_id = create_response.json()["id"]
 
+        # First add a member
+        await client.post(
+            f"/api/v1/workspaces/{workspace_id}/members",
+            json={"userId": "test-user-for-removal", "role": "member"},
+        )
+
         # Remove member
         response = await client.delete(
-            f"/api/v1/workspaces/{workspace_id}/members/test-user-123"
+            f"/api/v1/workspaces/{workspace_id}/members/test-user-for-removal"
         )
 
         assert response.status_code == 200
@@ -395,9 +409,22 @@ class TestWorkspaceWorkUnits:
         )
         workspace_id = ws_response.json()["id"]
 
+        # Create work unit
+        wu_response = await client.post(
+            "/api/v1/work-units",
+            json={"name": "Work Unit to Remove", "type": "atomic"},
+        )
+        work_unit_id = wu_response.json()["id"]
+
+        # First add work unit to workspace
+        await client.post(
+            f"/api/v1/workspaces/{workspace_id}/work-units",
+            json={"workUnitId": work_unit_id},
+        )
+
         # Remove work unit
         response = await client.delete(
-            f"/api/v1/workspaces/{workspace_id}/work-units/test-wu-123"
+            f"/api/v1/workspaces/{workspace_id}/work-units/{work_unit_id}"
         )
 
         assert response.status_code == 200

@@ -170,6 +170,37 @@ def _workspace_to_response(workspace: dict, current_user: dict) -> WorkspaceResp
     )
 
 
+def _workspace_to_response_with_details(
+    workspace: dict,
+    current_user: dict,
+    members: list[WorkspaceMemberResponse],
+    work_units: list[WorkspaceWorkUnitResponse],
+) -> WorkspaceResponse:
+    """Convert workspace data to response model with members and work units."""
+    owner_id = workspace.get("owner_id", current_user["id"])
+    owner_name = workspace.get("owner_name", current_user.get("name", "Unknown"))
+
+    return WorkspaceResponse(
+        id=workspace["id"],
+        name=workspace["name"],
+        description=workspace.get("description"),
+        workspaceType=workspace.get("workspace_type", workspace.get("environment_type", "permanent")),
+        color=workspace.get("color"),
+        ownerId=owner_id,
+        ownerName=owner_name,
+        organizationId=workspace["organization_id"],
+        members=members,
+        workUnits=work_units,
+        memberCount=len(members),
+        workUnitCount=len(work_units),
+        expiresAt=workspace.get("expires_at"),
+        archivedAt=workspace.get("archived_at"),
+        isArchived=bool(workspace.get("archived_at")),
+        createdAt=workspace.get("created_at", ""),
+        updatedAt=workspace.get("updated_at", ""),
+    )
+
+
 def _workspace_to_summary(workspace: dict, current_user: dict) -> WorkspaceSummaryResponse:
     """Convert workspace data to summary response model."""
     owner_id = workspace.get("owner_id", current_user["id"])
@@ -254,7 +285,42 @@ async def get_workspace(
             detail="Not authorized to access this workspace",
         )
 
-    return _workspace_to_response(workspace, current_user)
+    # Fetch members and work units
+    members_result = await workspace_service.get_members(workspace_id)
+    work_units_result = await workspace_service.get_work_units(workspace_id)
+
+    members = [
+        WorkspaceMemberResponse(
+            userId=m.get("user_id", ""),
+            userName=m.get("user_name", "Unknown"),
+            email=m.get("email"),
+            role=m.get("role", "member"),
+            department=m.get("department"),
+            constraints=None,  # Parse JSON if needed
+            joinedAt=m.get("created_at", ""),
+            invitedBy=m.get("invited_by"),
+        )
+        for m in members_result.get("records", [])
+    ]
+
+    work_units = [
+        WorkspaceWorkUnitResponse(
+            workUnitId=wu.get("work_unit_id", ""),
+            workUnitName=wu.get("work_unit_name", "Unknown"),
+            workUnitType=wu.get("work_unit_type", "atomic"),
+            trustStatus="valid",
+            delegationId=wu.get("delegation_id"),
+            constraints=None,  # Parse JSON if needed
+            addedAt=wu.get("created_at", ""),
+            addedBy=wu.get("added_by", ""),
+            department=wu.get("department"),
+        )
+        for wu in work_units_result.get("records", [])
+    ]
+
+    return _workspace_to_response_with_details(
+        workspace, current_user, members, work_units
+    )
 
 
 @router.post("", response_model=WorkspaceResponse, status_code=status.HTTP_201_CREATED)
@@ -270,13 +336,13 @@ async def create_workspace(
         name=request.name,
         organization_id=current_user["organization_id"],
         environment_type=request.workspaceType,  # Map to existing field
+        workspace_type=request.workspaceType,
         description=request.description or "",
     )
 
     # Set owner fields
     workspace["owner_id"] = current_user["id"]
     workspace["owner_name"] = current_user.get("name", "Unknown")
-    workspace["workspace_type"] = request.workspaceType
 
     return _workspace_to_response(workspace, current_user)
 
@@ -341,7 +407,10 @@ async def archive_workspace(
 
     await workspace_service.update_workspace(
         workspace_id,
-        {"archived_at": datetime.now(UTC).isoformat()},
+        {
+            "is_archived": True,
+            "archived_at": datetime.now(UTC).isoformat(),
+        },
     )
 
     return MessageResponse(message="Workspace archived successfully")
@@ -371,7 +440,10 @@ async def restore_workspace(
 
     updated = await workspace_service.update_workspace(
         workspace_id,
-        {"archived_at": None},
+        {
+            "is_archived": False,
+            "archived_at": None,
+        },
     )
 
     return _workspace_to_response(updated, current_user)
@@ -440,8 +512,28 @@ async def add_workspace_member(
             detail="Not authorized to manage this workspace",
         )
 
-    # For now, return success - actual member management would update workspace_members table
-    return {"message": "Member added successfully", "userId": request.userId, "role": request.role}
+    # Check if member already exists
+    existing = await workspace_service.get_member(workspace_id, request.userId)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User is already a member of this workspace",
+        )
+
+    # Add member using WorkspaceService
+    member = await workspace_service.add_member(
+        workspace_id=workspace_id,
+        user_id=request.userId,
+        role=request.role,
+        invited_by=current_user["id"],
+    )
+
+    return {
+        "message": "Member added successfully",
+        "userId": member.get("user_id", request.userId),
+        "role": member.get("role", request.role),
+        "id": member.get("id"),
+    }
 
 
 @router.patch("/{workspace_id}/members/{user_id}")
@@ -468,7 +560,26 @@ async def update_workspace_member(
             detail="Not authorized to manage this workspace",
         )
 
-    return {"message": "Member role updated", "userId": user_id, "role": request.role}
+    # Check if member exists
+    existing = await workspace_service.get_member(workspace_id, user_id)
+    if not existing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found in this workspace",
+        )
+
+    # Update member role
+    updated = await workspace_service.update_member(
+        workspace_id=workspace_id,
+        user_id=user_id,
+        role=request.role,
+    )
+
+    return {
+        "message": "Member role updated",
+        "userId": user_id,
+        "role": updated.get("role", request.role) if updated else request.role,
+    }
 
 
 @router.delete("/{workspace_id}/members/{user_id}")
@@ -494,7 +605,15 @@ async def remove_workspace_member(
             detail="Not authorized to manage this workspace",
         )
 
-    return {"message": "Member removed successfully"}
+    # Remove member using WorkspaceService
+    removed = await workspace_service.remove_member(workspace_id, user_id)
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Member not found in this workspace",
+        )
+
+    return {"message": "Member removed successfully", "userId": user_id}
 
 
 # ===================
@@ -513,6 +632,10 @@ async def add_work_unit_to_workspace(
     Add a work unit to a workspace.
     Creates a delegation for workspace members to access the work unit.
     """
+    from studio.services.agent_service import AgentService
+    from studio.services.pipeline_service import PipelineService
+    import json
+
     workspace = await workspace_service.get_workspace(workspace_id)
     if not workspace:
         raise HTTPException(
@@ -526,10 +649,45 @@ async def add_work_unit_to_workspace(
             detail="Not authorized to manage this workspace",
         )
 
+    # Check if work unit already exists in workspace
+    existing = await workspace_service.get_work_unit(workspace_id, request.workUnitId)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Work unit is already in this workspace",
+        )
+
+    # Determine work unit type by checking agent/pipeline services
+    agent_service = AgentService()
+    pipeline_service = PipelineService()
+
+    work_unit_type = "atomic"
+    agent = await agent_service.get(request.workUnitId)
+    if not agent:
+        pipeline = await pipeline_service.get(request.workUnitId)
+        if pipeline:
+            work_unit_type = "composite"
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Work unit not found",
+            )
+
+    # Add work unit to workspace
+    wwu = await workspace_service.add_work_unit(
+        workspace_id=workspace_id,
+        work_unit_id=request.workUnitId,
+        work_unit_type=work_unit_type,
+        added_by=current_user["id"],
+        constraints=json.dumps(request.constraints) if request.constraints else None,
+    )
+
     return {
         "message": "Work unit added to workspace",
-        "workUnitId": request.workUnitId,
+        "workUnitId": wwu.get("work_unit_id", request.workUnitId),
         "workspaceId": workspace_id,
+        "id": wwu.get("id"),
+        "workUnitType": wwu.get("work_unit_type", work_unit_type),
     }
 
 
@@ -557,4 +715,12 @@ async def remove_work_unit_from_workspace(
             detail="Not authorized to manage this workspace",
         )
 
-    return {"message": "Work unit removed from workspace"}
+    # Remove work unit using WorkspaceService
+    removed = await workspace_service.remove_work_unit(workspace_id, work_unit_id)
+    if not removed:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Work unit not found in this workspace",
+        )
+
+    return {"message": "Work unit removed from workspace", "workUnitId": work_unit_id}
