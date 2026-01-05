@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   WorkUnitGrid,
   WorkUnitFilters,
@@ -17,6 +18,7 @@ import { Plus } from 'lucide-react';
  * Part of the EATP Ontology "Build" section.
  */
 export function WorkUnitsPage() {
+  const navigate = useNavigate();
   const { level: userLevel } = useUserLevel();
   const [selectedUnit, setSelectedUnit] = useState<WorkUnit | null>(null);
   const [filters, setFilters] = useState<WorkUnitFiltersState>({});
@@ -56,11 +58,21 @@ export function WorkUnitsPage() {
     }
   }, [runWorkUnit]);
 
-  // Handle configure action
+  // Handle configure action - navigate to the appropriate editor
   const handleConfigure = useCallback((workUnit: WorkUnit) => {
-    // TODO: Open configuration dialog or navigate to configuration page
-    console.log('Configure work unit:', workUnit.id);
-  }, []);
+    // Close detail panel before navigating
+    setDetailPanelOpen(false);
+    setSelectedUnit(null);
+
+    // Navigate to appropriate editor based on work unit type
+    if (workUnit.type === 'atomic') {
+      // Atomic work units (agents) - use agent editor
+      navigate(`/agents/${workUnit.id}`);
+    } else if (workUnit.type === 'composite') {
+      // Composite work units (pipelines) - use pipeline editor with drag-and-drop
+      navigate(`/pipelines/${workUnit.id}`);
+    }
+  }, [navigate]);
 
   // Handle delegate action
   const handleDelegate = useCallback((workUnit: WorkUnit) => {

@@ -9,7 +9,7 @@
  */
 
 import { cn } from '@/lib/utils';
-import { Circle, CircleDot } from 'lucide-react';
+import { Bot, GitBranch } from 'lucide-react';
 
 export interface WorkUnitIconProps {
   /**
@@ -54,52 +54,29 @@ const sizeConfig = {
 /**
  * WorkUnitIcon renders a visual icon representing the work unit type.
  *
- * The design uses subtle visual metaphors:
- * - Atomic units show a single solid circle (focused, direct execution)
- * - Composite units show stacked circles with decreasing opacity (layered orchestration)
+ * The design uses distinct visual metaphors:
+ * - Atomic: Bot icon (single AI agent) with blue accent
+ * - Composite: GitBranch icon (workflow/pipeline) with purple accent
  */
 export function WorkUnitIcon({ type, size = 'md', className }: WorkUnitIconProps) {
   const config = sizeConfig[size];
+  const isAtomic = type === 'atomic';
 
   return (
     <div
       className={cn(
-        'flex items-center justify-center rounded-lg bg-muted',
+        'flex items-center justify-center rounded-lg',
+        isAtomic ? 'bg-primary/10' : 'bg-purple-100 dark:bg-purple-900/30',
         config.container,
         className
       )}
       role="img"
-      aria-label={type === 'atomic' ? 'Atomic work unit' : 'Composite work unit'}
+      aria-label={isAtomic ? 'Atomic work unit (single agent)' : 'Composite work unit (pipeline)'}
     >
-      {type === 'atomic' ? (
-        <CircleDot className={cn('text-primary', config.icon)} />
+      {isAtomic ? (
+        <Bot className={cn('text-primary', config.icon)} />
       ) : (
-        <div className="relative flex items-center justify-center">
-          {/* Back circle - most transparent */}
-          <Circle
-            className={cn(
-              'absolute text-primary/30',
-              config.iconSmall
-            )}
-            style={{ transform: 'translate(-25%, -25%)' }}
-          />
-          {/* Middle circle - medium transparency */}
-          <Circle
-            className={cn(
-              'absolute text-primary/60',
-              config.iconSmall
-            )}
-            style={{ transform: 'translate(-10%, -10%)' }}
-          />
-          {/* Front circle - full opacity */}
-          <Circle
-            className={cn(
-              'text-primary',
-              config.iconSmall
-            )}
-            style={{ transform: 'translate(5%, 5%)' }}
-          />
-        </div>
+        <GitBranch className={cn('text-purple-600 dark:text-purple-400', config.icon)} />
       )}
     </div>
   );

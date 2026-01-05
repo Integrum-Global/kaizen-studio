@@ -19,6 +19,7 @@ import {
 import type { WorkUnit, UserLevel } from '../types';
 import { WorkUnitIcon } from './WorkUnitIcon';
 import { TrustStatusBadge } from './TrustStatusBadge';
+import { TypeBadge } from './TypeBadge';
 import { CapabilityTags } from './CapabilityTags';
 import { SubUnitCount } from './SubUnitCount';
 import { WorkUnitActions } from './WorkUnitActions';
@@ -167,9 +168,12 @@ export function WorkUnitCard({
         {/* Header content */}
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-start justify-between gap-2">
-            <CardTitle className={cn('line-clamp-1', compact ? 'text-base' : 'text-lg')}>
-              {workUnit.name}
-            </CardTitle>
+            <div className="flex items-center gap-2 min-w-0">
+              <CardTitle className={cn('line-clamp-1', compact ? 'text-base' : 'text-lg')}>
+                {workUnit.name}
+              </CardTitle>
+              <TypeBadge type={workUnit.type} size="sm" className="flex-shrink-0" />
+            </div>
             <TrustStatusBadge
               status={trustStatus}
               expiresAt={workUnit.trustInfo?.expiresAt}

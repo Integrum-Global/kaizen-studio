@@ -47,25 +47,27 @@ interface UserLevelContextValue extends UserContextType {
 const UserLevelContext = createContext<UserLevelContextValue | null>(null);
 
 /**
- * Determine user level based on delegations and trust chain position
+ * Determine user level based on API response
  *
- * Level 3 criteria:
- * - Can establish trust (is an authority or has trust establishment capability)
- * - Is at root or intermediate position in trust chain
+ * The backend calculates the level based on user role:
+ * - org_owner → Level 3 (Value Chain Owner)
+ * - org_admin → Level 2 (Process Owner)
+ * - developer, viewer → Level 1 (Task Performer)
  *
- * Level 2 criteria:
- * - Has given delegations to others (manages processes)
- * - Has received delegations with delegation capability
- *
- * Level 1 criteria:
- * - Has received delegations (can execute tasks)
- * - Default for authenticated users
+ * We use the level directly from the API response if available,
+ * with fallback logic for backwards compatibility.
  */
 function determineUserLevel(data: UserLevelResponse | undefined): UserLevel {
   if (!data) {
     return 1; // Default to Level 1
   }
 
+  // Use level from API response if available (preferred)
+  if (data.level && data.level >= 1 && data.level <= 3) {
+    return data.level as UserLevel;
+  }
+
+  // Fallback: determine from delegation/trust data if level not provided
   // Level 3: Can establish trust or is at root/intermediate position
   if (data.canEstablishTrust || data.trustChainPosition === 'root' || data.trustChainPosition === 'intermediate') {
     return 3;

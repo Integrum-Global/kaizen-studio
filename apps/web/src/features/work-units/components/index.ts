@@ -10,6 +10,9 @@ export type { WorkUnitIconProps } from './WorkUnitIcon';
 export { TrustStatusBadge } from './TrustStatusBadge';
 export type { TrustStatusBadgeProps } from './TrustStatusBadge';
 
+export { TypeBadge } from './TypeBadge';
+export type { TypeBadgeProps } from './TypeBadge';
+
 export { CapabilityTags } from './CapabilityTags';
 export type { CapabilityTagsProps } from './CapabilityTags';
 
