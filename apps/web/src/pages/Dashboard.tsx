@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/auth";
 import {
@@ -11,6 +11,7 @@ import {
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { ResponsiveContainer, ResponsiveGrid } from "../components/layout";
+import { Skeleton } from "../components/ui/skeleton";
 import { useBreakpoint } from "../hooks";
 import {
   Plus,
@@ -21,6 +22,13 @@ import {
   Activity,
   Clock,
 } from "lucide-react";
+import {
+  useWorkUnits,
+  useProcesses,
+  useTeamActivity,
+} from "@/features/work-units/hooks";
+import { useDeployments } from "@/features/deployments/hooks";
+import type { ActivityEvent } from "@/features/work-units/api/work-units";
 
 interface ActivityItem {
   id: string;
@@ -30,53 +38,102 @@ interface ActivityItem {
   timestamp: Date;
 }
 
+/**
+ * Transform API activity event to UI activity item
+ */
+function transformActivityEvent(event: ActivityEvent): ActivityItem {
+  // Map API event type to UI type
+  const typeMapping: Record<ActivityEvent["type"], ActivityItem["type"]> = {
+    run: "agent",
+    delegation: "pipeline",
+    error: "agent",
+    completion: "agent",
+  };
+
+  // Map API event type to action string
+  const actionMapping: Record<ActivityEvent["type"], string> = {
+    run: "started run",
+    delegation: "delegated",
+    error: "encountered error",
+    completion: "completed",
+  };
+
+  return {
+    id: event.id,
+    type: typeMapping[event.type],
+    action: actionMapping[event.type],
+    target: event.workUnitName,
+    timestamp: new Date(event.timestamp),
+  };
+}
+
 export function Dashboard() {
   const { user } = useAuthStore();
   const { breakpoint, isMobile } = useBreakpoint();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(new Date());
 
-  // Mock stats - in a real app these would come from an API
-  const [stats, setStats] = useState({
-    activeWorkUnits: 0,
-    activeProcesses: 0,
-    deployments: 0,
-  });
+  // Fetch real data from API
+  const {
+    data: workUnitsData,
+    isLoading: isLoadingWorkUnits,
+    refetch: refetchWorkUnits,
+    dataUpdatedAt: workUnitsUpdatedAt,
+  } = useWorkUnits();
 
-  // Mock recent activity - in a real app this would come from an API
-  const [recentActivity] = useState<ActivityItem[]>([
-    {
-      id: "1",
-      type: "agent",
-      action: "created",
-      target: "Customer Support Bot",
-      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
-    },
-    {
-      id: "2",
-      type: "pipeline",
-      action: "deployed",
-      target: "Data Processing Pipeline",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    },
-    {
-      id: "3",
-      type: "deployment",
-      action: "updated",
-      target: "Production API",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
-    },
-  ]);
+  const {
+    data: processesData,
+    isLoading: isLoadingProcesses,
+    refetch: refetchProcesses,
+  } = useProcesses();
+
+  const {
+    data: deploymentsData,
+    isLoading: isLoadingDeployments,
+    refetch: refetchDeployments,
+  } = useDeployments();
+
+  const {
+    data: activityData,
+    isLoading: isLoadingActivity,
+    refetch: refetchActivity,
+    isFetching: isFetchingActivity,
+  } = useTeamActivity(10);
+
+  // Derive stats from real data
+  const stats = useMemo(
+    () => ({
+      activeWorkUnits: workUnitsData?.total ?? 0,
+      activeProcesses: processesData?.length ?? 0,
+      deployments: deploymentsData?.total ?? 0,
+    }),
+    [workUnitsData?.total, processesData?.length, deploymentsData?.total]
+  );
+
+  // Transform activity data to UI format
+  const recentActivity = useMemo<ActivityItem[]>(() => {
+    if (!activityData) return [];
+    return activityData.map(transformActivityEvent);
+  }, [activityData]);
+
+  // Compute loading states
+  const isLoadingStats =
+    isLoadingWorkUnits || isLoadingProcesses || isLoadingDeployments;
+  const isRefreshing = isFetchingActivity;
+
+  // Last refresh timestamp from React Query
+  const lastRefresh = useMemo(
+    () => new Date(workUnitsUpdatedAt || Date.now()),
+    [workUnitsUpdatedAt]
+  );
 
   const handleRefresh = useCallback(async () => {
-    setIsRefreshing(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    // Update stats (in real app, fetch from API)
-    setStats((prev) => ({ ...prev }));
-    setLastRefresh(new Date());
-    setIsRefreshing(false);
-  }, []);
+    // Refetch all queries in parallel
+    await Promise.all([
+      refetchWorkUnits(),
+      refetchProcesses(),
+      refetchDeployments(),
+      refetchActivity(),
+    ]);
+  }, [refetchWorkUnits, refetchProcesses, refetchDeployments, refetchActivity]);
 
   const formatTimeAgo = (date: Date) => {
     const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -179,12 +236,12 @@ export function Dashboard() {
               variant="ghost"
               size="icon"
               onClick={handleRefresh}
-              disabled={isRefreshing}
+              disabled={isRefreshing || isLoadingStats}
               aria-label="refresh stats"
               title="refresh"
             >
               <RefreshCw
-                className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                className={`h-4 w-4 ${isRefreshing || isLoadingStats ? "animate-spin" : ""}`}
               />
             </Button>
           </CardHeader>
@@ -195,21 +252,33 @@ export function Dashboard() {
                   <Boxes className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Active Work Units</span>
                 </div>
-                <Badge>{stats.activeWorkUnits}</Badge>
+                {isLoadingWorkUnits ? (
+                  <Skeleton className="h-5 w-8" />
+                ) : (
+                  <Badge>{stats.activeWorkUnits}</Badge>
+                )}
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Workflow className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Active Processes</span>
                 </div>
-                <Badge>{stats.activeProcesses}</Badge>
+                {isLoadingProcesses ? (
+                  <Skeleton className="h-5 w-8" />
+                ) : (
+                  <Badge>{stats.activeProcesses}</Badge>
+                )}
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Server className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">Deployments</span>
                 </div>
-                <Badge>{stats.deployments}</Badge>
+                {isLoadingDeployments ? (
+                  <Skeleton className="h-5 w-8" />
+                ) : (
+                  <Badge>{stats.deployments}</Badge>
+                )}
               </div>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
@@ -249,17 +318,30 @@ export function Dashboard() {
             variant="ghost"
             size="icon"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={isRefreshing || isLoadingActivity}
             aria-label="refresh activity"
             title="refresh"
           >
             <RefreshCw
-              className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+              className={`h-4 w-4 ${isRefreshing || isLoadingActivity ? "animate-spin" : ""}`}
             />
           </Button>
         </CardHeader>
         <CardContent>
-          {recentActivity.length === 0 ? (
+          {isLoadingActivity ? (
+            <div className="space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4 p-2">
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/4" />
+                  </div>
+                  <Skeleton className="h-3 w-16" />
+                </div>
+              ))}
+            </div>
+          ) : recentActivity.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4 text-center">
               No recent activity
             </p>

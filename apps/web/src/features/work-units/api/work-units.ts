@@ -118,6 +118,14 @@ export async function fetchUserRecentRuns(limit = 10): Promise<RunResult[]> {
 }
 
 /**
+ * Get details for a specific run
+ */
+export async function fetchRunDetails(runId: string): Promise<RunResult> {
+  const response = await apiClient.get<RunResult>(`/api/v1/runs/${runId}`);
+  return response.data;
+}
+
+/**
  * Workspace reference type
  */
 export interface WorkspaceResponse {

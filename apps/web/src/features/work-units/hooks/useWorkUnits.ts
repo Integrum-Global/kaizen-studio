@@ -20,6 +20,7 @@ import {
   fetchRecentRuns,
   fetchAvailableTasks,
   fetchUserRecentRuns,
+  fetchRunDetails,
   fetchWorkspaces,
   fetchDelegatees,
   fetchProcesses,
@@ -39,6 +40,7 @@ export const workUnitKeys = {
   runs: (id: string) => [...workUnitKeys.all, 'runs', id] as const,
   available: () => [...workUnitKeys.all, 'available'] as const,
   recentRuns: () => [...workUnitKeys.all, 'recent-runs'] as const,
+  runDetail: (runId: string) => ['run', runId] as const,
   workspaces: () => ['workspaces'] as const,
   delegatees: () => ['delegatees'] as const,
 };
@@ -101,6 +103,18 @@ export function useWorkUnitRuns(workUnitId: string | undefined, limit = 5) {
     queryFn: () => fetchRecentRuns(workUnitId!, limit),
     enabled: !!workUnitId,
     staleTime: 10 * 1000,
+  });
+}
+
+/**
+ * Hook to fetch details for a specific run
+ */
+export function useRunDetails(runId: string | undefined) {
+  return useQuery({
+    queryKey: workUnitKeys.runDetail(runId || ''),
+    queryFn: () => fetchRunDetails(runId!),
+    enabled: !!runId,
+    staleTime: 30 * 1000,
   });
 }
 

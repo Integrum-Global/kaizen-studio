@@ -580,7 +580,7 @@ test.describe('Work Units Page - Grid Display', () => {
       const firstCard = workUnitCards.first();
 
       // Look for trust badge
-      const trustBadge = firstCard.locator('[data-testid*="trust"], text=/Trust/i');
+      const trustBadge = firstCard.locator('[data-testid*="trust"]').or(firstCard.getByText(/Trust/i));
 
       if (await trustBadge.count() > 0) {
         await expect(trustBadge.first()).toBeVisible();

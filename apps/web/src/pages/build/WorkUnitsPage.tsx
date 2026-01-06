@@ -4,9 +4,20 @@ import {
   WorkUnitGrid,
   WorkUnitFilters,
   WorkUnitDetailPanel,
+  WorkUnitCreateWizard,
 } from '@/features/work-units';
 import type { WorkUnit, WorkUnitFiltersState } from '@/features/work-units';
-import { useWorkUnits, useWorkUnitRuns, useRunWorkUnit, useWorkspaces } from '@/features/work-units/hooks';
+import type { CreateWorkUnitFormData } from '@/features/work-units/components/wizard';
+import {
+  useWorkUnits,
+  useWorkUnitRuns,
+  useRunWorkUnit,
+  useWorkspaces,
+  useCreateWorkUnit,
+  useDelegatees,
+} from '@/features/work-units/hooks';
+import { DelegationWizard, TrustChainViewer, useTrustChain } from '@/features/trust';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserLevel } from '@/contexts/UserLevelContext';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
@@ -25,6 +36,15 @@ export function WorkUnitsPage() {
   const [detailPanelOpen, setDetailPanelOpen] = useState(false);
   const [loadingWorkUnitId, setLoadingWorkUnitId] = useState<string | undefined>();
   const [loadingAction, setLoadingAction] = useState<'run' | 'configure' | 'delegate' | undefined>();
+  const [showCreateWizard, setShowCreateWizard] = useState(false);
+
+  // Delegation wizard state
+  const [showDelegateWizard, setShowDelegateWizard] = useState(false);
+  const [delegateWorkUnitId, setDelegateWorkUnitId] = useState<string | undefined>();
+
+  // Trust chain viewer state
+  const [showTrustChain, setShowTrustChain] = useState(false);
+  const [trustChainAgentId, setTrustChainAgentId] = useState<string | undefined>();
 
   // Fetch work units with filters
   const { data: workUnitsData, isLoading } = useWorkUnits(filters);
@@ -34,11 +54,20 @@ export function WorkUnitsPage() {
   const { data: workspacesData } = useWorkspaces();
   const workspaceRefs = workspacesData?.map((ws) => ({ id: ws.id, name: ws.name })) ?? [];
 
+  // Fetch available delegatees for the create wizard
+  const { data: delegateesData } = useDelegatees();
+
   // Fetch recent runs for selected work unit
   const { data: recentRuns } = useWorkUnitRuns(selectedUnit?.id);
 
+  // Fetch trust chain when viewing
+  const { data: trustChainData } = useTrustChain(trustChainAgentId ?? '');
+
   // Run work unit mutation
   const runWorkUnit = useRunWorkUnit();
+
+  // Create work unit mutation
+  const createWorkUnit = useCreateWorkUnit();
 
   // Handle work unit click - opens detail panel
   const handleWorkUnitClick = useCallback((workUnit: WorkUnit) => {
@@ -74,16 +103,16 @@ export function WorkUnitsPage() {
     }
   }, [navigate]);
 
-  // Handle delegate action
+  // Handle delegate action - opens delegation wizard
   const handleDelegate = useCallback((workUnit: WorkUnit) => {
-    // TODO: Open delegation wizard
-    console.log('Delegate work unit:', workUnit.id);
+    setDelegateWorkUnitId(workUnit.id);
+    setShowDelegateWizard(true);
   }, []);
 
-  // Handle view trust action
+  // Handle view trust action - opens trust chain viewer
   const handleViewTrust = useCallback((workUnit: WorkUnit) => {
-    // TODO: Open trust chain viewer
-    console.log('View trust for work unit:', workUnit.id);
+    setTrustChainAgentId(workUnit.id);
+    setShowTrustChain(true);
   }, []);
 
   // Handle close detail panel
@@ -98,6 +127,19 @@ export function WorkUnitsPage() {
     console.log('View run:', runId);
   }, []);
 
+  // Handle create work unit submission
+  const handleCreateSubmit = useCallback(async (formData: CreateWorkUnitFormData) => {
+    await createWorkUnit.mutateAsync({
+      name: formData.name,
+      description: formData.description,
+      type: formData.type,
+      capabilities: formData.capabilities,
+      workspaceId: formData.workspaceId,
+      tags: formData.tags,
+    });
+    setShowCreateWizard(false);
+  }, [createWorkUnit]);
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -108,7 +150,7 @@ export function WorkUnitsPage() {
             Manage your projects, teams, and processes
           </p>
         </div>
-        <Button onClick={() => console.log('TODO: Open create work unit dialog')}>
+        <Button onClick={() => setShowCreateWizard(true)}>
           <Plus className="h-4 w-4 mr-2" />
           Create Work Unit
         </Button>
@@ -156,6 +198,47 @@ export function WorkUnitsPage() {
         onViewRun={handleViewRun}
         isLoading={loadingWorkUnitId === selectedUnit?.id}
       />
+
+      {/* Create Work Unit Wizard */}
+      <WorkUnitCreateWizard
+        isOpen={showCreateWizard}
+        onClose={() => setShowCreateWizard(false)}
+        onSubmit={handleCreateSubmit}
+        userLevel={userLevel}
+        workspaces={workspaceRefs}
+        delegatees={delegateesData ?? []}
+        isSubmitting={createWorkUnit.isPending}
+      />
+
+      {/* Delegation Wizard Dialog */}
+      <Dialog open={showDelegateWizard} onOpenChange={setShowDelegateWizard}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Delegate Work Unit</DialogTitle>
+          </DialogHeader>
+          <DelegationWizard
+            initialSourceAgentId={delegateWorkUnitId}
+            onSuccess={() => {
+              setShowDelegateWizard(false);
+              setDelegateWorkUnitId(undefined);
+            }}
+            onCancel={() => {
+              setShowDelegateWizard(false);
+              setDelegateWorkUnitId(undefined);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Trust Chain Viewer Dialog */}
+      <Dialog open={showTrustChain} onOpenChange={setShowTrustChain}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Trust Chain</DialogTitle>
+          </DialogHeader>
+          {trustChainData && <TrustChainViewer trustChain={trustChainData} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

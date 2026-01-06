@@ -131,6 +131,9 @@ const MyProcessesPage = lazy(() =>
 const ValueChainsPage = lazy(() =>
   import("./pages/work").then((m) => ({ default: m.ValueChainsPage }))
 );
+const RunDetailsPage = lazy(() =>
+  import("./pages/work").then((m) => ({ default: m.RunDetailsPage }))
+);
 
 // Lazy load govern pages (EATP Ontology - Level 3)
 const ComplianceDashboard = lazy(() =>
@@ -210,6 +213,7 @@ function AuthProviderRoutes() {
           <Route path="/work/processes/:id" element={<MyProcessesPage />} />
           <Route path="/work/value-chains" element={<ValueChainsPage />} />
           <Route path="/work/value-chains/:id" element={<ValueChainsPage />} />
+          <Route path="/work/runs/:runId" element={<RunDetailsPage />} />
 
           {/* Govern (EATP Ontology - Level 3) */}
           <Route path="/govern/compliance" element={<ComplianceDashboard />} />
@@ -218,7 +222,7 @@ function AuthProviderRoutes() {
           {/* Build */}
           <Route path="/build/work-units" element={<WorkUnitsPage />} />
           <Route path="/build/workspaces" element={<WorkspacesPage />} />
-          <Route path="/build/workspaces/:id" element={<WorkspaceDetailPage />} />
+          <Route path="/build/workspaces/:workspaceId" element={<WorkspaceDetailPage />} />
 
           {/* Legacy routes - redirect to new EATP ontology paths */}
           <Route path="/agents" element={<Navigate to="/build/work-units" replace />} />

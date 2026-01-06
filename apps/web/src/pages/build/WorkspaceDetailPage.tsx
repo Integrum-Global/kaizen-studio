@@ -13,6 +13,8 @@ import {
   useWorkUnitRuns,
   useRunWorkUnit,
 } from '@/features/work-units/hooks';
+import { DelegationWizard, TrustChainViewer, useTrustChain } from '@/features/trust';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useUserLevel } from '@/contexts/UserLevelContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Plus, Settings, Users } from 'lucide-react';
@@ -40,11 +42,22 @@ export function WorkspaceDetailPage() {
   const [loadingWorkUnitId, setLoadingWorkUnitId] = useState<string | undefined>();
   const [loadingAction, setLoadingAction] = useState<'run' | 'configure' | 'delegate' | undefined>();
 
+  // Delegation wizard state
+  const [showDelegateWizard, setShowDelegateWizard] = useState(false);
+  const [delegateWorkUnitId, setDelegateWorkUnitId] = useState<string | undefined>();
+
+  // Trust chain viewer state
+  const [showTrustChain, setShowTrustChain] = useState(false);
+  const [trustChainAgentId, setTrustChainAgentId] = useState<string | undefined>();
+
   // Fetch recent runs for selected work unit
   const { data: recentRuns } = useWorkUnitRuns(selectedUnit?.id);
 
   // Run work unit mutation
   const runWorkUnit = useRunWorkUnit();
+
+  // Fetch trust chain when viewing
+  const { data: trustChainData } = useTrustChain(trustChainAgentId ?? '');
 
   // Convert workspace work units to WorkUnit array for the grid
   const workUnits: WorkUnit[] = workspace?.workUnits?.map((wu) => ({
@@ -85,16 +98,16 @@ export function WorkspaceDetailPage() {
     console.log('Configure work unit:', workUnit.id);
   }, []);
 
-  // Handle delegate action
+  // Handle delegate action - opens delegation wizard
   const handleDelegate = useCallback((workUnit: WorkUnit) => {
-    // TODO: Open delegation wizard
-    console.log('Delegate work unit:', workUnit.id);
+    setDelegateWorkUnitId(workUnit.id);
+    setShowDelegateWizard(true);
   }, []);
 
-  // Handle view trust action
+  // Handle view trust action - opens trust chain viewer
   const handleViewTrust = useCallback((workUnit: WorkUnit) => {
-    // TODO: Open trust chain viewer
-    console.log('View trust for work unit:', workUnit.id);
+    setTrustChainAgentId(workUnit.id);
+    setShowTrustChain(true);
   }, []);
 
   // Handle close detail panel
@@ -229,6 +242,36 @@ export function WorkspaceDetailPage() {
           />
         </>
       )}
+
+      {/* Delegation Wizard Dialog */}
+      <Dialog open={showDelegateWizard} onOpenChange={setShowDelegateWizard}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Delegate Work Unit</DialogTitle>
+          </DialogHeader>
+          <DelegationWizard
+            initialSourceAgentId={delegateWorkUnitId}
+            onSuccess={() => {
+              setShowDelegateWizard(false);
+              setDelegateWorkUnitId(undefined);
+            }}
+            onCancel={() => {
+              setShowDelegateWizard(false);
+              setDelegateWorkUnitId(undefined);
+            }}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Trust Chain Viewer Dialog */}
+      <Dialog open={showTrustChain} onOpenChange={setShowTrustChain}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Trust Chain</DialogTitle>
+          </DialogHeader>
+          {trustChainData && <TrustChainViewer trustChain={trustChainData} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

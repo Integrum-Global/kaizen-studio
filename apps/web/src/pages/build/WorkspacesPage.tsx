@@ -1,8 +1,18 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WorkspaceCard } from '@/features/work-units';
-import { useWorkspaceList, useCreateWorkspace } from '@/features/work-units/hooks';
-import type { WorkspaceType, CreateWorkspaceInput, WorkspaceSummary } from '@/features/work-units/types';
+import {
+  useWorkspaceList,
+  useCreateWorkspace,
+  useUpdateWorkspace,
+  useArchiveWorkspace,
+} from '@/features/work-units/hooks';
+import type {
+  WorkspaceType,
+  CreateWorkspaceInput,
+  UpdateWorkspaceInput,
+  WorkspaceSummary,
+} from '@/features/work-units/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Search, LayoutGrid, List } from 'lucide-react';
@@ -23,6 +33,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 /**
  * Workspaces Page
@@ -41,6 +61,18 @@ export function WorkspacesPage() {
     workspaceType: 'permanent',
   });
 
+  // Edit dialog state
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingWorkspace, setEditingWorkspace] = useState<WorkspaceSummary | null>(null);
+  const [editFormData, setEditFormData] = useState<UpdateWorkspaceInput>({
+    name: '',
+    description: '',
+  });
+
+  // Archive confirmation state
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [archivingWorkspace, setArchivingWorkspace] = useState<WorkspaceSummary | null>(null);
+
   // Fetch workspaces with search filter
   const { data: workspacesData, isLoading } = useWorkspaceList({
     search: searchQuery || undefined,
@@ -48,6 +80,12 @@ export function WorkspacesPage() {
 
   // Create workspace mutation
   const createWorkspace = useCreateWorkspace();
+
+  // Update workspace mutation
+  const updateWorkspace = useUpdateWorkspace();
+
+  // Archive workspace mutation
+  const archiveWorkspace = useArchiveWorkspace();
 
   const workspaces = workspacesData ?? [];
 
@@ -68,13 +106,44 @@ export function WorkspacesPage() {
   };
 
   const handleEditWorkspace = (workspace: WorkspaceSummary) => {
-    // TODO: Open edit dialog or navigate to edit page
-    console.log('Edit workspace:', workspace.id);
+    setEditingWorkspace(workspace);
+    setEditFormData({
+      name: workspace.name,
+      description: workspace.description || '',
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleEditSubmit = async () => {
+    if (editingWorkspace && editFormData.name?.trim()) {
+      try {
+        await updateWorkspace.mutateAsync({
+          id: editingWorkspace.id,
+          input: editFormData,
+        });
+        setShowEditDialog(false);
+        setEditingWorkspace(null);
+      } catch {
+        // Error handled by mutation
+      }
+    }
   };
 
   const handleArchiveWorkspace = (workspace: WorkspaceSummary) => {
-    // TODO: Implement archive functionality
-    console.log('Archive workspace:', workspace.id);
+    setArchivingWorkspace(workspace);
+    setShowArchiveConfirm(true);
+  };
+
+  const handleArchiveConfirm = async () => {
+    if (archivingWorkspace) {
+      try {
+        await archiveWorkspace.mutateAsync(archivingWorkspace.id);
+        setShowArchiveConfirm(false);
+        setArchivingWorkspace(null);
+      } catch {
+        // Error handled by mutation
+      }
+    }
   };
 
   return (
@@ -246,6 +315,75 @@ export function WorkspacesPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Workspace</DialogTitle>
+            <DialogDescription>
+              Update the workspace details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Name</Label>
+              <Input
+                id="edit-name"
+                value={editFormData.name || ''}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, name: e.target.value })
+                }
+                placeholder="Workspace name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={editFormData.description || ''}
+                onChange={(e) =>
+                  setEditFormData({ ...editFormData, description: e.target.value })
+                }
+                placeholder="Describe the purpose of this workspace..."
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditSubmit}
+              disabled={!editFormData.name?.trim() || updateWorkspace.isPending}
+            >
+              {updateWorkspace.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={showArchiveConfirm} onOpenChange={setShowArchiveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive Workspace?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive "{archivingWorkspace?.name}"?
+              This will hide it from the workspace list. You can restore it later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleArchiveConfirm}
+              disabled={archiveWorkspace.isPending}
+            >
+              {archiveWorkspace.isPending ? 'Archiving...' : 'Archive'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
