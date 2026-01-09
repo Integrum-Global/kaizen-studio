@@ -7,13 +7,13 @@ Tests trigger evaluation without any infrastructure dependencies.
 import pytest
 from datetime import datetime, timedelta
 
-from kaizen.trust.governance.triggers import (
+from studio_kaizen.trust.governance.triggers import (
     TriggerContext,
     TriggerResult,
     ApprovalTriggerEvaluator,
     InMemoryHistoryProvider,
 )
-from kaizen.trust.governance.config import ApprovalTriggerConfig
+from studio_kaizen.trust.governance.config import ApprovalTriggerConfig
 
 
 class TestTriggerContext:

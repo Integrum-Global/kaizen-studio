@@ -11,7 +11,7 @@ This module provides the core governance infrastructure for the
 EATP (Enterprise Agent Trust Protocol) implementation.
 
 Examples:
-    >>> from kaizen.trust.governance import (
+    >>> from studio_kaizen.trust.governance import (
     ...     ExternalAgentBudgetEnforcer,
     ...     ExternalAgentBudget,
     ...     BudgetCheckResult,
@@ -27,7 +27,7 @@ Examples:
     ...     await execute_invocation()
 
     >>> # Approval workflows
-    >>> from kaizen.trust.governance import (
+    >>> from studio_kaizen.trust.governance import (
     ...     ExternalAgentApprovalManager,
     ...     ApprovalTriggerConfig,
     ...     ApprovalWorkflowConfig,
@@ -40,7 +40,7 @@ Examples:
 """
 
 # Core types
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.types import (
     # Budget types
     BudgetCheckResult,
     BudgetScope,
@@ -66,7 +66,7 @@ from kaizen.trust.governance.types import (
 )
 
 # Configuration
-from kaizen.trust.governance.config import (
+from studio_kaizen.trust.governance.config import (
     BudgetAlertConfig,
     ExternalAgentBudgetConfig,
     ApprovalTriggerConfig,
@@ -74,7 +74,7 @@ from kaizen.trust.governance.config import (
 )
 
 # Storage
-from kaizen.trust.governance.store import (
+from studio_kaizen.trust.governance.store import (
     BudgetStore,
     DataFlowBudgetStore,
     InMemoryBudgetStore,
@@ -84,7 +84,7 @@ from kaizen.trust.governance.store import (
 )
 
 # Triggers
-from kaizen.trust.governance.triggers import (
+from studio_kaizen.trust.governance.triggers import (
     ApprovalTriggerEvaluator,
     TriggerContext,
     TriggerResult,
@@ -92,10 +92,10 @@ from kaizen.trust.governance.triggers import (
 )
 
 # Enforcers and Managers
-from kaizen.trust.governance.budget_enforcer import ExternalAgentBudgetEnforcer
-from kaizen.trust.governance.rate_limiter import ExternalAgentRateLimiter
-from kaizen.trust.governance.policy_engine import ExternalAgentPolicyEngine
-from kaizen.trust.governance.approval_manager import (
+from studio_kaizen.trust.governance.budget_enforcer import ExternalAgentBudgetEnforcer
+from studio_kaizen.trust.governance.rate_limiter import ExternalAgentRateLimiter
+from studio_kaizen.trust.governance.policy_engine import ExternalAgentPolicyEngine
+from studio_kaizen.trust.governance.approval_manager import (
     ExternalAgentApprovalManager,
     ApprovalNotFoundError,
     UnauthorizedApproverError,
@@ -105,7 +105,7 @@ from kaizen.trust.governance.approval_manager import (
 )
 
 # Notifications
-from kaizen.trust.governance.notifications import (
+from studio_kaizen.trust.governance.notifications import (
     ApprovalNotificationService,
     ApproverInfo,
     EmailNotificationAdapter,

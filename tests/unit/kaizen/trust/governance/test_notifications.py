@@ -8,11 +8,11 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, patch
 
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.types import (
     ApprovalStatus,
     ApprovalRequest,
 )
-from kaizen.trust.governance.notifications import (
+from studio_kaizen.trust.governance.notifications import (
     ApproverInfo,
     ApprovalNotificationService,
     EmailNotificationAdapter,

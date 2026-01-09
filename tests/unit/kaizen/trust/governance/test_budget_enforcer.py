@@ -8,10 +8,10 @@ Uses InMemoryBudgetStore for isolation.
 import pytest
 from datetime import datetime
 
-from kaizen.trust.governance.budget_enforcer import ExternalAgentBudgetEnforcer
-from kaizen.trust.governance.config import ExternalAgentBudgetConfig
-from kaizen.trust.governance.store import InMemoryBudgetStore
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.budget_enforcer import ExternalAgentBudgetEnforcer
+from studio_kaizen.trust.governance.config import ExternalAgentBudgetConfig
+from studio_kaizen.trust.governance.store import InMemoryBudgetStore
+from studio_kaizen.trust.governance.types import (
     BudgetScope,
     ExternalAgentBudget,
 )

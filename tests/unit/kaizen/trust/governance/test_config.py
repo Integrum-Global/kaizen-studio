@@ -8,7 +8,7 @@ import pytest
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from kaizen.trust.governance.config import (
+from studio_kaizen.trust.governance.config import (
     ExternalAgentBudgetConfig,
     BudgetAlertConfig,
 )

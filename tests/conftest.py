@@ -320,6 +320,7 @@ def organization_factory():
 @pytest.fixture
 def workspace_factory():
     """Factory to create workspace test data."""
+    from datetime import UTC, datetime
 
     def _create_workspace(
         id: str = None,
@@ -327,6 +328,11 @@ def workspace_factory():
         name: str = "Test Workspace",
         environment_type: str = "development",
         description: str = "Test workspace description",
+        workspace_type: str = "permanent",
+        is_archived: bool = False,
+        archived_at: str = "",
+        created_at: str = None,
+        updated_at: str = None,
     ) -> dict:
         now = datetime.now(UTC).isoformat()
         return {
@@ -335,8 +341,11 @@ def workspace_factory():
             "name": name,
             "environment_type": environment_type,
             "description": description,
-            "created_at": now,
-            "updated_at": now,
+            "workspace_type": workspace_type,
+            "is_archived": is_archived,
+            "archived_at": archived_at,
+            "created_at": created_at or now,
+            "updated_at": updated_at or now,
         }
 
     return _create_workspace

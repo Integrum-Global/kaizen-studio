@@ -25,30 +25,27 @@ dependencies = [
     # Kailash SDK & Frameworks
     "kailash>=0.10.13",
     "kailash-nexus>=1.1.2",
-    "kailash-dataflow>=0.10.12",
+    "kailash-dataflow>=0.10.13",
     "kailash-kaizen>=0.8.2",
-
     # Core Framework
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0",
     "pydantic>=2.5.0",
     "pydantic-settings>=2.1.0",
-
     # Authentication
     "pyjwt>=2.8.0",
     "passlib[bcrypt]>=1.7.4",
     "python-multipart>=0.0.6",
     "email-validator>=2.0.0",
-
     # Database & Cache
     "redis>=5.0.0",
     "asyncpg>=0.29.0",
     "motor>=3.3.0",
     "psycopg2-binary>=2.9.0",
-
     # Utilities
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
+    "bcrypt>=4.0.0,<5.0.0",
 ]
 
 [project.optional-dependencies]
@@ -149,4 +146,9 @@ exclude_lines = [
     "raise AssertionError",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
+]
+
+[dependency-groups]
+dev = [
+    "respx>=0.22.0",
 ]

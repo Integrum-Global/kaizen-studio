@@ -38,8 +38,8 @@ import pytest
 
 # Configuration
 BASE_URL = "http://localhost:8000/api/v1"
-ORG_ID = "808b334a-994c-4604-a5df-7acf4b6d2f12"
-WORKSPACE_ID = "ws-628674e5-63bc-44e3-ad38-c9a536aacbbe"
+ORG_ID = "61b1546c-5ef8-4d68-984b-d1a93229731c"
+WORKSPACE_ID = "f1093373-9045-40a8-8d62-4446dad0036a"
 TEST_PASSWORD = "Integrum2024!"
 
 # Agent definitions by use-case

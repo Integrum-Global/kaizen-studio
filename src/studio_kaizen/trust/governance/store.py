@@ -21,7 +21,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.types import (
     ApprovalRequest,
     ApprovalStatus,
     BudgetScope,
@@ -800,7 +800,7 @@ class DataFlowApprovalStore:
 
     def _record_to_request(self, record: dict[str, Any]) -> ApprovalRequest:
         """Convert database record to ApprovalRequest."""
-        from kaizen.trust.governance.types import ApprovalDecision
+        from studio_kaizen.trust.governance.types import ApprovalDecision
 
         # Parse JSON fields
         invocation_context = {}

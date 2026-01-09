@@ -184,6 +184,38 @@ async def list_users(
     )
 
 
+# NOTE: This route MUST be before /{user_id} to avoid path parameter conflict
+@router.get("/delegatees", response_model=list[DelegateeResponse])
+async def list_delegatees(
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    List users available for delegation.
+    Returns users in the same organization that can be delegated to.
+    """
+    result = await user_service.list_users(
+        organization_id=current_user["organization_id"],
+        filters={"status": "active"},
+        limit=100,
+        offset=0,
+    )
+
+    delegatees = []
+    for user in result.get("records", []):
+        # Skip current user
+        if user["id"] == current_user["id"]:
+            continue
+        delegatees.append(
+            DelegateeResponse(
+                id=user["id"],
+                name=user.get("name", user["email"]),
+                level=_get_level_for_role(user.get("role", "viewer")),
+            )
+        )
+
+    return delegatees
+
+
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
     user_id: str,
@@ -357,37 +389,6 @@ def _get_permissions_for_level(level: int) -> dict:
         "canEstablishTrust": level >= 3,
         "canDelete": level >= 3,
     }
-
-
-@router.get("/delegatees", response_model=list[DelegateeResponse])
-async def list_delegatees(
-    current_user: dict = Depends(get_current_user),
-):
-    """
-    List users available for delegation.
-    Returns users in the same organization that can be delegated to.
-    """
-    result = await user_service.list_users(
-        organization_id=current_user["organization_id"],
-        filters={"status": "active"},
-        limit=100,
-        offset=0,
-    )
-
-    delegatees = []
-    for user in result.get("records", []):
-        # Skip current user
-        if user["id"] == current_user["id"]:
-            continue
-        delegatees.append(
-            DelegateeResponse(
-                id=user["id"],
-                name=user.get("name", user["email"]),
-                level=_get_level_for_role(user.get("role", "viewer")),
-            )
-        )
-
-    return delegatees
 
 
 @router.get("/{user_id}/level", response_model=UserLevelResponse)

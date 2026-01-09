@@ -7,12 +7,12 @@ Tests approval request storage without any infrastructure dependencies.
 import pytest
 from datetime import datetime, timedelta
 
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.types import (
     ApprovalStatus,
     ApprovalRequest,
     ApprovalDecision,
 )
-from kaizen.trust.governance.store import (
+from studio_kaizen.trust.governance.store import (
     InMemoryApprovalStore,
 )
 

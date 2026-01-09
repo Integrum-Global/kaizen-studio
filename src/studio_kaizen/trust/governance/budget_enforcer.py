@@ -13,13 +13,13 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from kaizen.trust.governance.config import ExternalAgentBudgetConfig
-from kaizen.trust.governance.store import (
+from studio_kaizen.trust.governance.config import ExternalAgentBudgetConfig
+from studio_kaizen.trust.governance.store import (
     BudgetStore,
     DataFlowBudgetStore,
     InMemoryBudgetStore,
 )
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.types import (
     BudgetCheckResult,
     BudgetScope,
     BudgetStatus,

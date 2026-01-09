@@ -28,6 +28,7 @@ setup('authenticate', async ({ page }) => {
         name: testUser.name,
         organization_name: testUser.organizationName,
       },
+      timeout: 30000, // 30s timeout for API request
     }
   );
 
@@ -49,6 +50,7 @@ setup('authenticate', async ({ page }) => {
           email: testUser.email,
           password: testUser.password,
         },
+        timeout: 30000, // 30s timeout for API request
       }
     );
 

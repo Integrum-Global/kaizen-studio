@@ -5,7 +5,7 @@ Integrates Kaizen governance components (BudgetEnforcer, RateLimiter, PolicyEngi
 into Kaizen Studio for external agent governance.
 
 This service is a thin integration layer that delegates to the production-ready
-governance components from kaizen.trust.governance.
+governance components from studio_kaizen.trust.governance.
 """
 
 import logging
@@ -19,9 +19,9 @@ from kailash.workflow.builder import WorkflowBuilder
 
 from studio.config import get_settings, is_production
 
-# Try to import from kaizen.trust.governance, fall back to stubs if not available
+# Try to import from studio_kaizen.trust.governance, fall back to stubs if not available
 try:
-    from kaizen.trust.governance import (
+    from studio_kaizen.trust.governance import (
         # Budget
         BudgetCheckResult,
         ExternalAgentBudget,
@@ -1016,7 +1016,7 @@ class GovernanceService:
             PolicyEvaluationResult with ALLOW or DENY decision
 
         Examples:
-            >>> from kaizen.trust.governance import (
+            >>> from studio_kaizen.trust.governance import (
             ...     ExternalAgentPolicyContext,
             ...     ExternalAgentPrincipal,
             ... )

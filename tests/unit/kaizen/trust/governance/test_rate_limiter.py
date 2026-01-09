@@ -8,8 +8,8 @@ import pytest
 import time
 from unittest.mock import patch
 
-from kaizen.trust.governance.rate_limiter import ExternalAgentRateLimiter
-from kaizen.trust.governance.types import RateLimitConfig
+from studio_kaizen.trust.governance.rate_limiter import ExternalAgentRateLimiter
+from studio_kaizen.trust.governance.types import RateLimitConfig
 
 
 class TestRateLimiterAllowed:

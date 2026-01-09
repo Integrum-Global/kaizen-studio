@@ -555,6 +555,8 @@ class TestSSOIdentityLinking:
     @pytest.mark.asyncio
     async def test_connection_update_timestamp(self, authenticated_owner_client):
         """Test that updated_at changes when connection is updated."""
+        from datetime import datetime
+
         client, user, org = authenticated_owner_client
 
         # Create connection
@@ -567,7 +569,7 @@ class TestSSOIdentityLinking:
             },
         )
 
-        original_updated_at = create_response.json()["updated_at"]
+        original_updated_at_str = create_response.json()["updated_at"]
 
         connection_id = create_response.json()["id"]
 
@@ -584,6 +586,19 @@ class TestSSOIdentityLinking:
             },
         )
 
-        updated_at = response.json()["updated_at"]
+        updated_at_str = response.json()["updated_at"]
 
-        assert updated_at >= original_updated_at
+        # Parse timestamps for proper comparison (handles timezone differences)
+        def parse_timestamp(ts: str) -> datetime:
+            """Parse ISO timestamp, handling with/without timezone."""
+            # Remove timezone suffix for consistent parsing
+            if ts.endswith("+00:00"):
+                ts = ts[:-6]
+            elif ts.endswith("Z"):
+                ts = ts[:-1]
+            return datetime.fromisoformat(ts)
+
+        original_dt = parse_timestamp(original_updated_at_str)
+        updated_dt = parse_timestamp(updated_at_str)
+
+        assert updated_dt >= original_dt

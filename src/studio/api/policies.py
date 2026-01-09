@@ -341,7 +341,7 @@ async def evaluate_access(
 class ValidateConditionsRequest(BaseModel):
     """Request model for validating policy conditions."""
 
-    conditions: dict = Field(..., description="Conditions to validate")
+    conditions: dict | list = Field(..., description="Conditions to validate (dict or list)")
 
 
 class ResourceReferenceStatus(BaseModel):
@@ -417,4 +417,11 @@ async def get_policy_references(
         organization_id=org_id,
     )
 
-    return {"references": references, "total": len(references)}
+    from datetime import datetime, UTC
+
+    return {
+        "policy_id": policy_id,
+        "references": references,
+        "validated_at": datetime.now(UTC).isoformat(),
+        "total": len(references),
+    }

@@ -7,17 +7,17 @@ Tests approval workflow management without any infrastructure dependencies.
 import pytest
 from datetime import datetime, timedelta
 
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.types import (
     ApprovalStatus,
     ApprovalRequest,
     ApprovalCheckResult,
 )
-from kaizen.trust.governance.config import (
+from studio_kaizen.trust.governance.config import (
     ApprovalTriggerConfig,
     ApprovalWorkflowConfig,
 )
-from kaizen.trust.governance.store import InMemoryApprovalStore
-from kaizen.trust.governance.approval_manager import (
+from studio_kaizen.trust.governance.store import InMemoryApprovalStore
+from studio_kaizen.trust.governance.approval_manager import (
     ExternalAgentApprovalManager,
     ApprovalNotFoundError,
     UnauthorizedApproverError,

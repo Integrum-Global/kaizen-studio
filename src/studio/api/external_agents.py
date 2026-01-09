@@ -634,7 +634,7 @@ async def get_budget_status(
             )
 
         # Get budget status from enforcer
-        from kaizen.trust.governance import BudgetScope
+        from studio_kaizen.trust.governance import BudgetScope
 
         scope = BudgetScope(
             organization_id=current_user["organization_id"],
@@ -722,7 +722,7 @@ async def update_budget_config(
             await service.update(agent_id, updates)
 
         # Return updated budget status
-        from kaizen.trust.governance import BudgetScope
+        from studio_kaizen.trust.governance import BudgetScope
 
         scope = BudgetScope(
             organization_id=current_user["organization_id"],
@@ -895,7 +895,7 @@ async def approve_request(
                 detail="Approval workflows not available"
             )
 
-        from kaizen.trust.governance import (
+        from studio_kaizen.trust.governance import (
             ApprovalNotFoundError,
             ApprovalExpiredError,
             AlreadyDecidedError,
@@ -978,7 +978,7 @@ async def reject_request(
                 detail="Approval workflows not available"
             )
 
-        from kaizen.trust.governance import (
+        from studio_kaizen.trust.governance import (
             ApprovalNotFoundError,
             AlreadyDecidedError,
             UnauthorizedApproverError,

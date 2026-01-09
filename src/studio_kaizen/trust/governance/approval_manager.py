@@ -17,20 +17,20 @@ import uuid
 from datetime import datetime
 from typing import Any, Protocol
 
-from kaizen.trust.governance.config import (
+from studio_kaizen.trust.governance.config import (
     ApprovalTriggerConfig,
     ApprovalWorkflowConfig,
 )
-from kaizen.trust.governance.store import (
+from studio_kaizen.trust.governance.store import (
     ApprovalStore,
     InMemoryApprovalStore,
 )
-from kaizen.trust.governance.triggers import (
+from studio_kaizen.trust.governance.triggers import (
     ApprovalTriggerEvaluator,
     TriggerContext,
     InMemoryHistoryProvider,
 )
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.types import (
     ApprovalCheckResult,
     ApprovalDecision,
     ApprovalRequest,

@@ -198,7 +198,7 @@ class TestRedisConnectorExecution:
             "host": "localhost",
             "port": 6379,
             "db": 0,
-            "password": "",
+            "password": os.environ.get("REDIS_PASSWORD", "kaizen_redis_password"),
         }
 
         # SET operation
@@ -235,7 +235,7 @@ class TestRedisConnectorExecution:
             "host": "localhost",
             "port": 6379,
             "db": 0,
-            "password": "",
+            "password": os.environ.get("REDIS_PASSWORD", "kaizen_redis_password"),
         }
 
         # Set some test keys
@@ -382,7 +382,7 @@ class TestRedisPubSubExecution:
             "host": "localhost",
             "port": 6379,
             "db": 0,
-            "password": "",
+            "password": os.environ.get("REDIS_PASSWORD", "kaizen_redis_password"),
         }
 
         channel = f"test_channel_{os.getpid()}"

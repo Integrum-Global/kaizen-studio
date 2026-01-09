@@ -57,6 +57,39 @@ class ABACService:
         """Initialize the ABAC service."""
         self.runtime = runtime or AsyncLocalRuntime()
 
+    def _extract_resource_refs(self, conditions: dict) -> list:
+        """
+        Extract resource references from policy conditions.
+
+        Scans conditions for resource ID references like agent_id, team_id, etc.
+        Used for orphan detection and reference validation.
+
+        Args:
+            conditions: Policy condition dictionary
+
+        Returns:
+            List of resource reference dictionaries
+        """
+        refs = []
+        if not conditions:
+            return refs
+
+        def extract_from_dict(d: dict):
+            for key, value in d.items():
+                # Check for resource ID fields
+                if key.endswith("_id") and isinstance(value, str):
+                    ref_type = key.replace("_id", "")
+                    refs.append({"type": ref_type, "id": value})
+                elif isinstance(value, dict):
+                    extract_from_dict(value)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            extract_from_dict(item)
+
+        extract_from_dict(conditions)
+        return refs
+
     # ==================== Policy CRUD ====================
 
     async def create_policy(
@@ -92,6 +125,9 @@ class ABACService:
         """
         policy_id = str(uuid.uuid4())
 
+        # Extract resource references from conditions for orphan detection
+        resource_refs = self._extract_resource_refs(conditions)
+
         workflow = WorkflowBuilder()
         workflow.add_node(
             "PolicyCreateNode",
@@ -105,6 +141,7 @@ class ABACService:
                 "action": action,
                 "effect": effect,
                 "conditions": json.dumps(conditions),
+                "resource_refs": json.dumps(resource_refs) if resource_refs else "",
                 "priority": priority,
                 "status": status,
                 "created_by": created_by,
@@ -784,7 +821,9 @@ class ABACService:
         """
         Extract resource references from conditions.
 
-        Looks for $ref: "resource" patterns in condition values.
+        Supports two patterns:
+        1. $ref pattern: {"$ref": "resource", "type": "agent", "selector": {"id": "123"}}
+        2. Simple *_id pattern: {"agent_id": "123"} or {"value": "agent-123"}
 
         Args:
             conditions: Conditions dictionary
@@ -793,19 +832,59 @@ class ABACService:
             List of resource reference dictionaries
         """
         refs = []
+        seen_ids = set()  # Avoid duplicates
+
+        def extract_from_dict(d: dict) -> None:
+            # Pattern 1: $ref: "resource" pattern
+            if d.get("$ref") == "resource":
+                selector = d.get("selector", {})
+                ref_id = selector.get("id")
+                ref_ids = selector.get("ids")
+
+                # Handle single ID
+                if ref_id and ref_id not in seen_ids:
+                    seen_ids.add(ref_id)
+                    refs.append({
+                        "type": d.get("type", "unknown"),
+                        "id": ref_id,
+                        "ids": ref_ids,
+                        "name": d.get("display", {}).get("name"),
+                    })
+                # Handle multiple IDs (when no single ID but ids list exists)
+                elif ref_ids and isinstance(ref_ids, list):
+                    # Use tuple of sorted ids as seen key to dedupe
+                    ids_key = tuple(sorted(ref_ids))
+                    if ids_key not in seen_ids:
+                        seen_ids.add(ids_key)
+                        refs.append({
+                            "type": d.get("type", "unknown"),
+                            "id": None,
+                            "ids": ref_ids,
+                            "name": d.get("display", {}).get("name"),
+                        })
+                return
+
+            # Pattern 2: Simple *_id keys (agent_id, team_id, etc.)
+            for key, value in d.items():
+                if key.endswith("_id") and isinstance(value, str) and value not in seen_ids:
+                    seen_ids.add(value)
+                    ref_type = key.replace("_id", "")
+                    refs.append({
+                        "type": ref_type,
+                        "id": value,
+                        "ids": None,
+                        "name": None,
+                    })
+                elif isinstance(value, dict):
+                    extract_from_dict(value)
+                elif isinstance(value, list):
+                    for item in value:
+                        if isinstance(item, dict):
+                            extract_from_dict(item)
 
         def extract_from_value(value: Any) -> None:
             if isinstance(value, dict):
-                if value.get("$ref") == "resource":
-                    refs.append({
-                        "type": value.get("type", "unknown"),
-                        "id": value.get("selector", {}).get("id"),
-                        "ids": value.get("selector", {}).get("ids"),
-                        "name": value.get("display", {}).get("name"),
-                    })
-                else:
-                    for v in value.values():
-                        extract_from_value(v)
+                extract_from_dict(value)
             elif isinstance(value, list):
                 for item in value:
                     extract_from_value(item)

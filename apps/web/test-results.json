@@ -52,7 +52,7 @@
         "testMatch": [
           "/.*\\.setup\\.ts/"
         ],
-        "timeout": 30000
+        "timeout": 60000
       },
       {
         "outputDir": "/Users/esperie/repos/dev/kaizen-studio/apps/web/test-results",
@@ -156,7 +156,7 @@
           "tags": [],
           "tests": [
             {
-              "timeout": 30000,
+              "timeout": 60000,
               "annotations": [],
               "expectedStatus": "passed",
               "projectId": "setup",
@@ -166,12 +166,12 @@
                   "workerIndex": 0,
                   "parallelIndex": 0,
                   "status": "passed",
-                  "duration": 1718,
+                  "duration": 1283,
                   "errors": [],
                   "stdout": [],
                   "stderr": [],
                   "retry": 0,
-                  "startTime": "2026-01-05T18:23:00.034Z",
+                  "startTime": "2026-01-06T17:43:57.510Z",
                   "annotations": [],
                   "attachments": []
                 }
@@ -181,7 +181,7 @@
           ],
           "id": "17e3fe6f4d9d8bd79c6b-60f085b113a677673906",
           "file": "auth.setup.ts",
-          "line": 17,
+          "line": 16,
           "column": 1
         }
       ]
@@ -196,14 +196,14 @@
         {
           "title": "Complete User Workflow",
           "file": "complete-user-workflow.spec.ts",
-          "line": 74,
+          "line": 68,
           "column": 15,
           "specs": [],
           "suites": [
             {
               "title": "PHASE 1: BUILD - Create and Configure",
               "file": "complete-user-workflow.spec.ts",
-              "line": 122,
+              "line": 114,
               "column": 8,
               "specs": [
                 {
@@ -222,7 +222,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 145,
+                          "duration": 138,
                           "errors": [],
                           "stdout": [
                             {
@@ -241,7 +241,7 @@
                               "text": "Result: Logged in successfully\n"
                             },
                             {
-                              "text": "  - User ID: d7cf420b-acc7-4cd8-89fd-bc1f0476671c\n"
+                              "text": "  - User ID: 4086e490-37c3-405e-bc06-fc9f779504ed\n"
                             },
                             {
                               "text": "  - Organization ID: 808b334a-994c-4604-a5df-7acf4b6d2f12\n"
@@ -265,7 +265,7 @@
                               "text": "Result: SUCCESS - Agent created\n"
                             },
                             {
-                              "text": "  - Agent ID: 69cc5fb7-4a7e-4324-9124-6fbfa300f7a1\n"
+                              "text": "  - Agent ID: 09cee144-b45b-4fa3-8d5b-21de92982a62\n"
                             },
                             {
                               "text": "User sees: Agent card in Work Units list with Bot icon\n"
@@ -273,7 +273,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:02.329Z",
+                          "startTime": "2026-01-06T17:43:59.302Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -283,7 +283,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-2c5c4623e0ededfe349d",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 123,
+                  "line": 115,
                   "column": 5
                 },
                 {
@@ -302,7 +302,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 146,
+                          "duration": 149,
                           "errors": [],
                           "stdout": [
                             {
@@ -318,7 +318,7 @@
                               "text": "Result: SUCCESS - Pipeline created\n"
                             },
                             {
-                              "text": "  - Pipeline ID: a312e0f2-7c5b-41a3-8279-03995975db29\n"
+                              "text": "  - Pipeline ID: 381c54b4-99c1-49c2-a48d-b71e60b7e915\n"
                             },
                             {
                               "text": "User sees: Pipeline in editor with GitBranch icon\n"
@@ -326,7 +326,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:02.909Z",
+                          "startTime": "2026-01-06T17:43:59.858Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -336,7 +336,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-3b255dca7a04502549ca",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 157,
+                  "line": 147,
                   "column": 5
                 },
                 {
@@ -355,7 +355,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 147,
+                          "duration": 144,
                           "errors": [],
                           "stdout": [
                             {
@@ -371,7 +371,7 @@
                               "text": "Result: SUCCESS - Connector created\n"
                             },
                             {
-                              "text": "  - Connector ID: b0947085-3843-4937-aed1-d97051223443\n"
+                              "text": "  - Connector ID: 31d14c75-cd32-4341-b715-2b869ece3092\n"
                             },
                             {
                               "text": "User sees: Connector card with Test Connection button\n"
@@ -379,7 +379,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:03.059Z",
+                          "startTime": "2026-01-06T17:44:00.010Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -389,7 +389,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-92106c7ec18eab471f0f",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 189,
+                  "line": 179,
                   "column": 5
                 },
                 {
@@ -408,7 +408,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 145,
+                          "duration": 148,
                           "errors": [],
                           "stdout": [
                             {
@@ -424,7 +424,7 @@
                               "text": "Result: SUCCESS - Workspace created\n"
                             },
                             {
-                              "text": "  - Workspace ID: ae5d674f-6a85-42e1-8098-a338fe0dd693\n"
+                              "text": "  - Workspace ID: f7a07040-bd49-4e7b-a218-3e4103cb86c8\n"
                             },
                             {
                               "text": "User sees: Workspace card with Open button\n"
@@ -432,7 +432,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:03.210Z",
+                          "startTime": "2026-01-06T17:44:00.158Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -442,7 +442,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-f71efea3562a895550d3",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 225,
+                  "line": 212,
                   "column": 5
                 },
                 {
@@ -461,7 +461,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 147,
+                          "duration": 144,
                           "errors": [],
                           "stdout": [
                             {
@@ -477,7 +477,7 @@
                               "text": "Result: SUCCESS - Work Unit created\n"
                             },
                             {
-                              "text": "  - Work Unit ID: 534c91c4-9e07-416d-b6d0-081fe1a1f574\n"
+                              "text": "  - Work Unit ID: c109f2ee-660c-404d-86e3-5685b63b64f0\n"
                             },
                             {
                               "text": "User sees: Work Unit card with Bot icon, Agent badge\n"
@@ -485,7 +485,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:03.359Z",
+                          "startTime": "2026-01-06T17:44:00.310Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -495,7 +495,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-352b234bd825e25c752c",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 253,
+                  "line": 235,
                   "column": 5
                 },
                 {
@@ -514,7 +514,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 129,
+                          "duration": 146,
                           "errors": [],
                           "stdout": [
                             {
@@ -530,7 +530,7 @@
                               "text": "Result: SUCCESS - Workspace loaded\n"
                             },
                             {
-                              "text": "  - Name: E2E Test Workspace 1767637383284\n"
+                              "text": "  - Name: E2E Test Workspace 1767721440236\n"
                             },
                             {
                               "text": "  - Work Units: 0\n"
@@ -544,7 +544,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:03.509Z",
+                          "startTime": "2026-01-06T17:44:00.458Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -554,7 +554,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-aec325f998a0c7d3bb9f",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 289,
+                  "line": 271,
                   "column": 5
                 },
                 {
@@ -573,7 +573,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 147,
+                          "duration": 146,
                           "errors": [],
                           "stdout": [
                             {
@@ -584,29 +584,11 @@
                             },
                             {
                               "text": "User sees: Grid of work unit cards with filters (All, Atomic, Composite)\n"
-                            },
-                            {
-                              "text": "Result: SUCCESS - Found 20 work units\n"
-                            },
-                            {
-                              "text": "User sees: Work unit cards with:\n"
-                            },
-                            {
-                              "text": "  - Bot icon (atomic) or GitBranch icon (composite)\n"
-                            },
-                            {
-                              "text": "  - \"Agent\" or \"Pipeline\" type badge\n"
-                            },
-                            {
-                              "text": "  - Trust status badge (Valid/Pending/Expired)\n"
-                            },
-                            {
-                              "text": "  - Run, Configure, Delegate action buttons\n"
                             }
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:03.642Z",
+                          "startTime": "2026-01-06T17:44:00.607Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -616,7 +598,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-09924cd92faca451a621",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 311,
+                  "line": 289,
                   "column": 5
                 }
               ]
@@ -624,7 +606,7 @@
             {
               "title": "PHASE 2: DEPLOY - Release and Scale",
               "file": "complete-user-workflow.spec.ts",
-              "line": 336,
+              "line": 310,
               "column": 8,
               "specs": [
                 {
@@ -659,7 +641,7 @@
                               "text": "Result: SUCCESS - Gateway created\n"
                             },
                             {
-                              "text": "  - Gateway ID: 51d234fd-d984-4add-95a6-dff2be548299\n"
+                              "text": "  - Gateway ID: 9bad6e89-96d2-46fe-b2ac-61d25e5b6ebd\n"
                             },
                             {
                               "text": "User sees: Gateway card with endpoint URL, health status\n"
@@ -667,7 +649,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:03.792Z",
+                          "startTime": "2026-01-06T17:44:00.758Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -677,7 +659,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-9c228e054cad5029551e",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 337,
+                  "line": 311,
                   "column": 5
                 },
                 {
@@ -696,7 +678,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 200,
+                          "duration": 167,
                           "errors": [],
                           "stdout": [
                             {
@@ -712,7 +694,7 @@
                               "text": "Result: SUCCESS - Deployment created\n"
                             },
                             {
-                              "text": "  - Deployment ID: 2bc2918d-c9e4-413f-851b-f083ca0e11b4\n"
+                              "text": "  - Deployment ID: b11eabe3-51a9-4e71-a257-5f9b2a7f90c3\n"
                             },
                             {
                               "text": "User sees: Deployment card with status \"Active\"\n"
@@ -720,7 +702,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:03.942Z",
+                          "startTime": "2026-01-06T17:44:00.907Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -730,7 +712,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-150c58732c783414c133",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 369,
+                  "line": 341,
                   "column": 5
                 },
                 {
@@ -749,7 +731,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 142,
+                          "duration": 143,
                           "errors": [],
                           "stdout": [
                             {
@@ -762,7 +744,7 @@
                               "text": "User sees: List of deployments with status indicators\n"
                             },
                             {
-                              "text": "Result: SUCCESS - Found 1 deployments\n"
+                              "text": "Result: SUCCESS - Found 9 deployments\n"
                             },
                             {
                               "text": "User sees: Deployment cards with:\n"
@@ -782,7 +764,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:04.146Z",
+                          "startTime": "2026-01-06T17:44:01.079Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -792,7 +774,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-61b7a050a67872efe45a",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 401,
+                  "line": 370,
                   "column": 5
                 },
                 {
@@ -811,7 +793,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 147,
+                          "duration": 146,
                           "errors": [],
                           "stdout": [
                             {
@@ -824,7 +806,7 @@
                               "text": "User sees: List of API gateways with health status\n"
                             },
                             {
-                              "text": "Result: SUCCESS - Found 2 gateways\n"
+                              "text": "Result: SUCCESS - Found 10 gateways\n"
                             },
                             {
                               "text": "User sees: Gateway cards with:\n"
@@ -844,7 +826,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:04.292Z",
+                          "startTime": "2026-01-06T17:44:01.226Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -854,7 +836,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-6fd2b64643ee4a77ee31",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 422,
+                  "line": 386,
                   "column": 5
                 },
                 {
@@ -873,7 +855,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 161,
+                          "duration": 146,
                           "errors": [],
                           "stdout": [
                             {
@@ -897,7 +879,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:04.443Z",
+                          "startTime": "2026-01-06T17:44:01.375Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -907,7 +889,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-b60688c90ea943850e1c",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 443,
+                  "line": 402,
                   "column": 5
                 }
               ]
@@ -915,7 +897,7 @@
             {
               "title": "PHASE 3: GOVERN - Control and Audit",
               "file": "complete-user-workflow.spec.ts",
-              "line": 475,
+              "line": 425,
               "column": 8,
               "specs": [
                 {
@@ -934,7 +916,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 147,
+                          "duration": 128,
                           "errors": [],
                           "stdout": [
                             {
@@ -950,7 +932,7 @@
                               "text": "Result: SUCCESS - Team created\n"
                             },
                             {
-                              "text": "  - Team ID: 1d0d17bd-79c0-460b-bf81-7c6173afb7c2\n"
+                              "text": "  - Team ID: ce4bd164-9022-4704-ad2f-10c44a853435\n"
                             },
                             {
                               "text": "User sees: Team card with Add Members button\n"
@@ -958,7 +940,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:04.608Z",
+                          "startTime": "2026-01-06T17:44:01.525Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -968,7 +950,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-4a9ade54927b0ca5545e",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 476,
+                  "line": 426,
                   "column": 5
                 },
                 {
@@ -987,7 +969,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 164,
+                          "duration": 145,
                           "errors": [],
                           "stdout": [
                             {
@@ -1020,7 +1002,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:04.759Z",
+                          "startTime": "2026-01-06T17:44:01.657Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1030,7 +1012,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-0b78cde0b9d63e1afaf5",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 503,
+                  "line": 448,
                   "column": 5
                 },
                 {
@@ -1049,7 +1031,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 146,
+                          "duration": 144,
                           "errors": [],
                           "stdout": [
                             {
@@ -1073,7 +1055,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:04.927Z",
+                          "startTime": "2026-01-06T17:44:01.806Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1083,7 +1065,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-b9738b25bec476ac46f3",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 525,
+                  "line": 466,
                   "column": 5
                 },
                 {
@@ -1102,7 +1084,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 146,
+                          "duration": 147,
                           "errors": [],
                           "stdout": [
                             {
@@ -1135,7 +1117,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:05.076Z",
+                          "startTime": "2026-01-06T17:44:01.958Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1145,7 +1127,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-fcd624ac5ce1a4b497da",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 559,
+                  "line": 499,
                   "column": 5
                 },
                 {
@@ -1164,7 +1146,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 146,
+                          "duration": 127,
                           "errors": [],
                           "stdout": [
                             {
@@ -1200,7 +1182,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:05.225Z",
+                          "startTime": "2026-01-06T17:44:02.109Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1210,7 +1192,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-6e2a478dd096e9bbb96f",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 580,
+                  "line": 515,
                   "column": 5
                 },
                 {
@@ -1229,7 +1211,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 131,
+                          "duration": 134,
                           "errors": [],
                           "stdout": [
                             {
@@ -1240,17 +1222,11 @@
                             },
                             {
                               "text": "User sees: Grid of team cards\n"
-                            },
-                            {
-                              "text": "Result: SUCCESS - Found undefined teams\n"
-                            },
-                            {
-                              "text": "User sees: Team cards with member avatars\n"
                             }
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:05.375Z",
+                          "startTime": "2026-01-06T17:44:02.239Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1260,7 +1236,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-6b6a2e1e06d91f4da4c4",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 610,
+                  "line": 537,
                   "column": 5
                 }
               ]
@@ -1268,7 +1244,7 @@
             {
               "title": "PHASE 4: OBSERVE - Monitor and Analyze",
               "file": "complete-user-workflow.spec.ts",
-              "line": 631,
+              "line": 554,
               "column": 8,
               "specs": [
                 {
@@ -1287,7 +1263,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 170,
+                          "duration": 145,
                           "errors": [],
                           "stdout": [
                             {
@@ -1317,7 +1293,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:05.509Z",
+                          "startTime": "2026-01-06T17:44:02.377Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1327,7 +1303,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-9edfa9835a1b1390b4b8",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 632,
+                  "line": 555,
                   "column": 5
                 },
                 {
@@ -1346,7 +1322,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 139,
+                          "duration": 128,
                           "errors": [],
                           "stdout": [
                             {
@@ -1367,7 +1343,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:05.684Z",
+                          "startTime": "2026-01-06T17:44:02.525Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1377,7 +1353,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-03e1c8833aaa9bd46eb4",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 653,
+                  "line": 572,
                   "column": 5
                 },
                 {
@@ -1396,7 +1372,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 145,
+                          "duration": 130,
                           "errors": [],
                           "stdout": [
                             {
@@ -1414,7 +1390,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:05.827Z",
+                          "startTime": "2026-01-06T17:44:02.657Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1424,7 +1400,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-cab6f801ec7a76f85946",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 671,
+                  "line": 585,
                   "column": 5
                 },
                 {
@@ -1476,7 +1452,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:05.976Z",
+                          "startTime": "2026-01-06T17:44:02.790Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1486,7 +1462,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-36fd552124ad696f9bce",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 702,
+                  "line": 607,
                   "column": 5
                 },
                 {
@@ -1505,7 +1481,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 147,
+                          "duration": 131,
                           "errors": [],
                           "stdout": [
                             {
@@ -1535,7 +1511,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:06.109Z",
+                          "startTime": "2026-01-06T17:44:02.924Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1545,7 +1521,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-576b873adaae3689d647",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 723,
+                  "line": 623,
                   "column": 5
                 },
                 {
@@ -1564,7 +1540,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 146,
+                          "duration": 129,
                           "errors": [],
                           "stdout": [
                             {
@@ -1597,7 +1573,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:06.259Z",
+                          "startTime": "2026-01-06T17:44:03.058Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1607,7 +1583,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-b11783be8ed069d22999",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 743,
+                  "line": 638,
                   "column": 5
                 }
               ]
@@ -1615,7 +1591,7 @@
             {
               "title": "CLEANUP: Remove Test Data",
               "file": "complete-user-workflow.spec.ts",
-              "line": 768,
+              "line": 659,
               "column": 8,
               "specs": [
                 {
@@ -1634,7 +1610,7 @@
                           "workerIndex": 1,
                           "parallelIndex": 0,
                           "status": "passed",
-                          "duration": 209,
+                          "duration": 205,
                           "errors": [],
                           "stdout": [
                             {
@@ -1679,7 +1655,7 @@
                           ],
                           "stderr": [],
                           "retry": 0,
-                          "startTime": "2026-01-05T18:23:06.409Z",
+                          "startTime": "2026-01-06T17:44:03.190Z",
                           "annotations": [],
                           "attachments": []
                         }
@@ -1689,7 +1665,7 @@
                   ],
                   "id": "976c52945d7a115f2f9a-a45ffd870932496dea92",
                   "file": "complete-user-workflow.spec.ts",
-                  "line": 769,
+                  "line": 660,
                   "column": 5
                 }
               ]
@@ -1701,8 +1677,8 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-01-05T18:22:59.668Z",
-    "duration": 6985.133,
+    "startTime": "2026-01-06T17:43:57.238Z",
+    "duration": 6187.117,
     "expected": 26,
     "skipped": 0,
     "unexpected": 0,

@@ -55,6 +55,7 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
+      timeout: 60000, // 60s for auth setup (includes API calls)
     },
 
     // Browser projects - depend on setup and use saved auth state

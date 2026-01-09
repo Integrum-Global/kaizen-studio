@@ -165,8 +165,8 @@ def _workspace_to_response(workspace: dict, current_user: dict) -> WorkspaceResp
         expiresAt=workspace.get("expires_at"),
         archivedAt=workspace.get("archived_at"),
         isArchived=bool(workspace.get("archived_at")),
-        createdAt=workspace.get("created_at", ""),
-        updatedAt=workspace.get("updated_at", ""),
+        createdAt=workspace.get("created_at") or "",
+        updatedAt=workspace.get("updated_at") or "",
     )
 
 
@@ -196,8 +196,8 @@ def _workspace_to_response_with_details(
         expiresAt=workspace.get("expires_at"),
         archivedAt=workspace.get("archived_at"),
         isArchived=bool(workspace.get("archived_at")),
-        createdAt=workspace.get("created_at", ""),
-        updatedAt=workspace.get("updated_at", ""),
+        createdAt=workspace.get("created_at") or "",
+        updatedAt=workspace.get("updated_at") or "",
     )
 
 
@@ -442,7 +442,7 @@ async def restore_workspace(
         workspace_id,
         {
             "is_archived": False,
-            "archived_at": None,
+            "archived_at": "",  # Empty string for nullable timestamp (DataFlow pattern)
         },
     )
 

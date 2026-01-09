@@ -7,7 +7,7 @@ Tests core type definitions without any infrastructure.
 import pytest
 from datetime import datetime
 
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.types import (
     BudgetScope,
     BudgetCheckResult,
     BudgetStatus,

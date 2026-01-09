@@ -7,8 +7,8 @@ Tests ExternalAgentPolicyEngine logic without database/infrastructure.
 import pytest
 from datetime import datetime
 
-from kaizen.trust.governance.policy_engine import ExternalAgentPolicyEngine
-from kaizen.trust.governance.types import (
+from studio_kaizen.trust.governance.policy_engine import ExternalAgentPolicyEngine
+from studio_kaizen.trust.governance.types import (
     ConflictResolutionStrategy,
     ExternalAgentPolicy,
     ExternalAgentPolicyContext,

@@ -11,7 +11,7 @@ import time
 from collections import defaultdict
 from typing import Any
 
-from kaizen.trust.governance.types import RateLimitCheckResult, RateLimitConfig
+from studio_kaizen.trust.governance.types import RateLimitCheckResult, RateLimitConfig
 
 logger = logging.getLogger(__name__)
 

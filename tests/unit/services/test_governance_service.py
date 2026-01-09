@@ -8,7 +8,7 @@ Intent: Verify budget, rate limiting, and policy evaluation logic.
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from kaizen.trust.governance import (
+from studio_kaizen.trust.governance import (
     ExternalAgentBudget,
     ExternalAgentPolicyContext,
     ExternalAgentPrincipal,
@@ -88,7 +88,7 @@ class TestGovernanceServiceBudget:
 
         # Assert
         assert result.allowed is True
-        assert result.reason is None
+        assert result.reason == "Within budget"  # Now includes reason when allowed
         assert result.remaining_budget_usd == 50.0  # $100 - $50
 
     @pytest.mark.asyncio
@@ -366,6 +366,7 @@ class TestGovernanceServicePolicy:
                 external_agent_id="test-agent",
                 provider="copilot_studio",
                 environment="production",
+                org_id="org-001",
             ),
             action="invoke",
             resource="test-agent",
@@ -406,6 +407,7 @@ class TestGovernanceServicePolicy:
                 external_agent_id="test-agent",
                 provider="webhook",
                 environment="development",
+                org_id="org-001",
             ),
             action="invoke",
             resource="test-agent",
@@ -439,6 +441,8 @@ class TestGovernanceServicePolicy:
             principal=ExternalAgentPrincipal(
                 external_agent_id="test-agent",
                 provider="copilot_studio",
+                environment="production",
+                org_id="org-001",
             ),
             action="invoke",
             resource="test-agent",
