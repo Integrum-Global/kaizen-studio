@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 resolution-markers = [
     "python_full_version >= '3.13'",
@@ -1471,7 +1471,7 @@ wheels = [
 
 [[package]]
 name = "kailash-dataflow"
-version = "0.10.7"
+version = "0.10.12"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiomysql" },
@@ -1484,9 +1484,9 @@ dependencies = [
     { name = "redis" },
     { name = "sqlalchemy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3d/c3/ad08250e7436dbdeddde879db65c180216ecf3e93568ec0155f93d2f507e/kailash_dataflow-0.10.7.tar.gz", hash = "sha256:d87f96732432eaa65bf6ba4ac682e8bab37f3337b9919c0b860b69233b86bc50", size = 886520, upload-time = "2026-01-03T14:41:51.556Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/14/42/d2e96e548aa001e5a067cf9ce8e8537f461c66a1db79a3b4c484422c564a/kailash_dataflow-0.10.12.tar.gz", hash = "sha256:66579558e257a5cdbc2c13333eb972ac85df18fe82d52ff1695aba0598c9f3e8", size = 894898, upload-time = "2026-01-07T16:41:54.576Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/0f/7860c1576c53008073c7ef0adeb664f3db85e891d94ec4664230d6e0a6f7/kailash_dataflow-0.10.7-py3-none-any.whl", hash = "sha256:73c603e49038ab85e39404b7618d7d2593581b8841f7892b3eb2c6a22f7b6d28", size = 995433, upload-time = "2026-01-03T14:41:49.749Z" },
+    { url = "https://files.pythonhosted.org/packages/26/0e/a83ef585788dbe5a9af5669a4e50ba071a9de63b725a04fc55cc1b08552f/kailash_dataflow-0.10.12-py3-none-any.whl", hash = "sha256:6c0224b83bc234fc39a7b684033eeed99c40f195bc08140aa6c72edaeea3008f", size = 1004177, upload-time = "2026-01-07T16:41:51.91Z" },
 ]
 
 [[package]]
@@ -1574,7 +1574,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "httpx", marker = "extra == 'test'", specifier = ">=0.25.0" },
     { name = "kailash", specifier = ">=0.10.13" },
-    { name = "kailash-dataflow", specifier = ">=0.10.7" },
+    { name = "kailash-dataflow", specifier = ">=0.10.12" },
     { name = "kailash-kaizen", specifier = ">=0.8.2" },
     { name = "kailash-nexus", specifier = ">=1.1.2" },
     { name = "motor", specifier = ">=3.3.0" },

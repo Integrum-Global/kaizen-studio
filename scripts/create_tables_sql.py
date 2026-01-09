@@ -1,7 +1,18 @@
 #!/usr/bin/env python3
 """
-Create DataFlow tables using raw SQL.
+[DEPRECATED] Create DataFlow tables using raw SQL.
 
+This script is NO LONGER NEEDED as of DataFlow 0.10.10.
+
+DataFlow 0.10.10+ supports auto_migrate=False with create_tables_async() in FastAPI lifespan,
+which properly handles async/sync event loop conflicts.
+
+See src/studio/main.py lifespan() for the modern pattern:
+    await db.create_tables_async()
+
+This script is kept for backwards compatibility only. Do not use for new deployments.
+
+Old description:
 This script bypasses DataFlow's complex migration system which has async/sync
 event loop conflicts. It generates DDL from model definitions and executes
 directly via psycopg2.

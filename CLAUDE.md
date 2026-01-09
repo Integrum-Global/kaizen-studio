@@ -303,6 +303,54 @@ class User:
     name: str
 ```
 
+### 4. `soft_delete` Only Affects DELETE, NOT Queries
+
+```python
+# soft_delete config ONLY converts DELETE to UPDATE deleted_at
+@db.model
+class Patient:
+    id: str
+    deleted_at: Optional[str] = None
+    __dataflow__ = {"soft_delete": True}  # Only affects DeleteNode!
+
+# ❌ WRONG ASSUMPTION - Queries do NOT auto-filter
+workflow.add_node("PatientListNode", "list", {"filter": {}})
+# Returns ALL patients INCLUDING soft-deleted ones!
+
+# ✅ CORRECT - Manually filter for non-deleted records
+workflow.add_node("PatientListNode", "list", {
+    "filter": {"deleted_at": {"$null": True}}  # WHERE deleted_at IS NULL
+})
+```
+
+### 5. Query Operators for NULL Checking (v0.10.6+)
+
+```python
+# $null operator for IS NULL
+workflow.add_node("PatientListNode", "active", {
+    "filter": {"deleted_at": {"$null": True}}
+})
+
+# $exists operator for IS NOT NULL
+workflow.add_node("PatientListNode", "deleted", {
+    "filter": {"deleted_at": {"$exists": True}}
+})
+
+# $eq with None also works (v0.10.6+)
+workflow.add_node("PatientListNode", "active", {
+    "filter": {"deleted_at": {"$eq": None}}
+})
+```
+
+### 6. Result Keys by Node Type
+
+| Node Type | Result Key | Access Pattern |
+|-----------|------------|----------------|
+| ListNode | `records` | `results["list"]["records"]` |
+| CountNode | `count` | `results["count"]["count"]` |
+| ReadNode | (direct) | `results["read"]` → dict |
+| UpsertNode | `record`, `created` | `results["upsert"]["record"]` |
+
 ## 🐳 Docker Deployment
 - WorkflowAPI now defaults to AsyncLocalRuntime (async-first, no threads).
 
@@ -330,49 +378,99 @@ from kailash.runtime import get_runtime
 runtime = get_runtime("async")  # or "sync"
 ```
 
-## 🚨 DataFlow Docker Deployment (CRITICAL - v0.10.7+)
+## 🐳 DataFlow Docker Deployment (CRITICAL)
 
-**This is why kaizen-studio needed `scripts/create_tables_sql.py`!** Without this pattern, async/sync event loop conflicts occur (DF-501).
+### ⚠️ auto_migrate=False is REQUIRED for Docker/FastAPI
 
-### The Problem
-By default, `auto_migrate=True` creates database tables during `@db.model` registration (synchronously). In Docker/FastAPI, module imports happen when uvicorn starts - but the event loop may already be running. This causes:
-```
-RuntimeError: Cannot run the event loop while another loop is running
-```
+**IMPORTANT**: Despite `async_safe_run()` being implemented in v0.10.7+, `auto_migrate=True` **STILL FAILS** in Docker/FastAPI due to fundamental asyncio limitations:
 
-### The Solution
-Use `auto_migrate=False` + `create_tables_async()` in FastAPI lifespan:
+- **Problem**: Database connections are event-loop-bound in asyncio
+- **At import time**: uvicorn's event loop is already running
+- **async_safe_run creates a NEW event loop** in a thread pool for table creation
+- **Connections created there are bound to the wrong loop**
+- **Later, FastAPI routes fail**: "Task got Future attached to a different loop"
+
+### ✅ The ONLY Reliable Pattern for Docker/FastAPI
 
 ```python
 from dataflow import DataFlow
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
-# Step 1: Initialize with auto_migrate=False
+# CRITICAL: Use auto_migrate=False to prevent sync table creation at import time
+db = DataFlow("postgresql://...", auto_migrate=False)
+
+@db.model  # Models registered but NO tables created here (safe!)
+class User:
+    id: str
+    name: str
+    email: str
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables in FastAPI's event loop - this is the ONLY safe place
+    await db.create_tables_async()
+    yield
+    await db.close_async()
+
+app = FastAPI(lifespan=lifespan)
+```
+
+### When to Use Each Pattern
+
+| Context | Pattern | Reason |
+|---------|---------|--------|
+| **Docker/FastAPI** | `auto_migrate=False` + `create_tables_async()` | **REQUIRED** - event loop boundary issue |
+| **CLI Scripts** | `auto_migrate=True` (default) | No event loop, sync is safe |
+| **pytest (sync)** | `auto_migrate=True` (default) | No async fixtures |
+| **pytest (async)** | `auto_migrate=False` + `create_tables_async()` | Same as FastAPI |
+
+### DataFlow Express (23x Faster CRUD)
+
+For high-performance API endpoints, use `db.express` instead of workflows:
+
+```python
+# Express API: Direct node invocation, 23x faster than workflows
+user = await db.express.create("User", {"id": "user-123", "name": "Alice"})
+user = await db.express.read("User", "user-123")
+users = await db.express.list("User", filter={"status": "active"}, limit=100)
+count = await db.express.count("User", filter={"status": "active"})
+user = await db.express.update("User", "user-123", {"name": "Alice Updated"})
+deleted = await db.express.delete("User", "user-123")
+
+# Performance: ~0.27ms vs ~6.3ms per operation
+```
+
+### Complete FastAPI + DataFlow Example
+
+```python
+from dataflow import DataFlow
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+
+# Step 1: Initialize with auto_migrate=False (REQUIRED for Docker/FastAPI!)
 db = DataFlow(
-    "postgresql://user:pass@postgres:5432/kaizen_studio",
-    auto_migrate=False  # CRITICAL for Docker - no tables created at import
+    "postgresql://user:pass@localhost:5432/mydb",
+    auto_migrate=False  # CRITICAL: Prevents sync table creation at import time
 )
 
-# Step 2: Register models (NO tables created yet)
+# Step 2: Register models (NO tables created - safe!)
 @db.model
 class User:
     id: str
     name: str
     email: str
-    created_at: Optional[str] = None  # Auto-managed
-    updated_at: Optional[str] = None  # Auto-managed
 
-# Step 3: Create tables in lifespan (event loop is ready)
+# Step 3: Create tables in lifespan (REQUIRED - this is the ONLY safe place)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await db.create_tables_async()  # Now safe - event loop ready
+    await db.create_tables_async()  # Tables created in FastAPI's event loop
     yield
-    await db.close_async()          # Cleanup connections
+    await db.close_async()
 
 app = FastAPI(lifespan=lifespan)
 
-# Step 4: Use Express for CRUD endpoints (23x faster than workflows!)
+# Step 4: Use Express for CRUD endpoints
 @app.post("/users")
 async def create_user(data: dict):
     return await db.express.create("User", data)
@@ -381,49 +479,7 @@ async def create_user(data: dict):
 async def get_user(id: str):
     return await db.express.read("User", id)
 
-@app.put("/users/{id}")
-async def update_user(id: str, data: dict):
-    return await db.express.update("User", id, data)
-
-@app.delete("/users/{id}")
-async def delete_user(id: str):
-    return await db.express.delete("User", id)
-
 @app.get("/users")
-async def list_users(skip: int = 0, limit: int = 100):
-    return await db.express.list("User", skip=skip, limit=limit)
-```
-
-### When to Use Each Pattern
-
-| Context | Pattern | Reason |
-|---------|---------|--------|
-| **Docker/FastAPI** | `auto_migrate=False` + `create_tables_async()` | Event loop running at import |
-| CLI Scripts | `auto_migrate=True` (default) | No event loop, sync is safe |
-| pytest (sync) | `auto_migrate=True` (default) | No async fixtures |
-| pytest (async) | `auto_migrate=False` + `create_tables_async()` | Same as FastAPI |
-
-### DataFlow Express Performance (23x Faster!)
-For simple CRUD operations, Express is dramatically faster than workflows:
-
-| Operation | Workflow | Express | Speedup |
-|-----------|----------|---------|---------|
-| Create | ~6.3ms | ~0.27ms | **23x** |
-| Read | ~5.8ms | ~0.24ms | **24x** |
-| Update | ~6.1ms | ~0.26ms | **23x** |
-| Delete | ~5.9ms | ~0.25ms | **24x** |
-
-**Use Express for**: API endpoints, simple CRUD, high-throughput operations
-**Use Workflows for**: Complex business logic, multi-step operations, audit trails
-
-### Migration from Raw SQL Workarounds
-If you have an existing `scripts/create_tables_sql.py` or similar workaround, you can now replace it:
-
-```python
-# OLD: scripts/entrypoint.sh ran create_tables_sql.py before uvicorn
-# NEW: Use lifespan hook with create_tables_async()
-
-# Remove: scripts/create_tables_sql.py
-# Remove: scripts/entrypoint.sh raw SQL execution
-# Add: lifespan hook as shown above
+async def list_users(limit: int = 100):
+    return await db.express.list("User", limit=limit)
 ```

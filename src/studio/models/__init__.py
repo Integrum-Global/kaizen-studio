@@ -23,11 +23,16 @@ else:
 IS_TESTING = os.getenv("ENVIRONMENT") == "testing"
 
 # Initialize DataFlow instance
+# IMPORTANT: auto_migrate=False is REQUIRED for Docker/FastAPI environments!
+# Despite claims of fixes in 0.10.6+, auto_migrate=True still causes DF-501 errors
+# and "attached to a different loop" race conditions during model registration.
+# Use explicit create_tables_async() in FastAPI lifespan instead.
 db = DataFlow(
     database_url=DATABASE_URL,
-    auto_migrate=True,
+    auto_migrate=False,  # Tables created in FastAPI lifespan via create_tables_async()
     enable_caching=False,  # Disable caching globally - invalidation issues in async contexts
-    enable_metrics=True,
+    monitoring=True,  # Correct parameter (enable_metrics is deprecated)
+    migration_enabled=False,  # Disable migration system to avoid schema_state_manager errors
 )
 
 from studio.models.agent import Agent

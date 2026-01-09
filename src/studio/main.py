@@ -69,21 +69,37 @@ async def lifespan(app: FastAPI):
     Application lifespan manager.
 
     Handles startup and shutdown events.
+    Uses create_tables_async() because auto_migrate=True still has race condition
+    issues in Docker/FastAPI despite claimed fixes in DataFlow 0.10.6+.
     """
     # Startup
     settings = get_settings()
     logger.info(f"Starting {settings.app_name} v{settings.version}")
     logger.info(f"Environment: {settings.environment}")
 
-    # DataFlow tables are created by scripts/entrypoint.sh BEFORE uvicorn starts.
-    # This avoids async event loop conflicts that occur with DataFlow's migration system.
-    # See: docs/22-deployment/02-troubleshooting.md for details.
-    logger.info("DataFlow tables should be ready (created by entrypoint script)")
+    # Create database tables using DataFlow's async method
+    # This is required because auto_migrate=True causes DF-501 and event loop errors
+    from studio.models import db
+
+    logger.info("Creating database tables via DataFlow...")
+    try:
+        await db.create_tables_async()
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+        raise
 
     yield
 
     # Shutdown
     logger.info(f"Shutting down {settings.app_name}")
+
+    # Close DataFlow connections for proper cleanup
+    try:
+        await db.close_async()
+        logger.info("DataFlow connections closed")
+    except Exception as e:
+        logger.warning(f"Error closing DataFlow connections: {e}")
 
 
 def create_app() -> FastAPI:
